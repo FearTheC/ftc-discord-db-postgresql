@@ -8,5 +8,8 @@
             "email": "quentin@bonaventure.xyz"
         }
     ],
-    "require": {}
+    "require": {
+        "qbonaventure/discord-model": "dev-master"
+
+    }
 }
