@@ -3,7 +3,7 @@ namespace FTC\Discord\Db\Postgresql\Factory;
 
 use Psr\Container\ContainerInterface;
 use FTC\Discord\Db\Postgresql\GuildRoleRepository as GuildRoleRepositoryImp;
-use FTC\Discord\Db\Postgresql\Core;
+use FTC\Discord\Db\Core;
 
 class GuildRoleRepository
 {
