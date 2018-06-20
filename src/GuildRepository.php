@@ -1,9 +1,9 @@
 <?php
-namespace FTCBotCore\Discord\Repository;
+namespace FTC\Discord\Db\Postgresql;
 
 
-use FTC\Discord\Db\PostgresqlGuildRepository as RepositoryInterface;
-use FTC\Discord\Db\PostgresqlGuild;
+use FTC\Discord\Db\Postgresql\GuildRepository as RepositoryInterface;
+use FTC\Discord\Db\Postgresql\Guild;
 
 class GuildRepository extends PostgresqlRepository implements RepositoryInterface
 {

@@ -1,5 +1,5 @@
 <?php
-namespace FTCBotCore\Discord\Repository;
+namespace FTC\Discord\Db\Postgresql;
 
 abstract class PostgresqlRepository
 {
