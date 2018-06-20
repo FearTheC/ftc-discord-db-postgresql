@@ -11,5 +11,10 @@
     "require": {
         "qbonaventure/discord-model": "dev-master"
 
+    },
+    "autoload": {
+        "psr-4": {
+            "FTC\\Discord\\Db\\": "src"
+        }
     }
 }
