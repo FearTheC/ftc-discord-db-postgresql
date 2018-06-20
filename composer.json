@@ -1,0 +1,12 @@
+{
+    "name": "qbonaventure/discord-db-postgresql",
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Quentin Bonaventure",
+            "email": "quentin@bonaventure.xyz"
+        }
+    ],
+    "require": {}
+}
