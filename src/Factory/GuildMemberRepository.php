@@ -2,7 +2,7 @@
 namespace FTC\Discord\Db\Postgresql\Factory;
 
 use Psr\Container\ContainerInterface;
-use FTCBotCore\Discord\Repository\GuildMemberRepository as GuildMemberRepositoryImp;
+use FTC\Discord\Db\Postgresql\GuildMemberRepository as GuildMemberRepositoryImp;
 use FTCBotCore\Db\Core;
 
 class GuildMemberRepository
