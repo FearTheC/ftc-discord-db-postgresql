@@ -9,7 +9,7 @@
         }
     ],
     "require": {
-        "qbonaventure/discord-model": "dev-master"
+        "qbonaventure/discord-model": "^0.0.1"
 
     },
     "autoload": {
