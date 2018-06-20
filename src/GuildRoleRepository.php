@@ -3,7 +3,7 @@ namespace FTC\Discord\Db\Postgresql;
 
 
 use FTC\Discord\Db\Postgresql\GuildRoleRepository as RepositoryInterface;
-use FTC\Discord\Db\Postgresql\GuildRole;
+use FTC\Discord\Model\GuildRole;
 
 class GuildRoleRepository extends PostgresqlRepository implements RepositoryInterface
 {

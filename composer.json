@@ -14,7 +14,7 @@
     },
     "autoload": {
         "psr-4": {
-            "FTC\\Discord\\Db\\Postgresql": "src"
+            "FTC\\Discord\\Db\\Postgresql\\": "src"
         }
     }
 }
