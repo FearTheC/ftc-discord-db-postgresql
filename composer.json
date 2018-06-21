@@ -7,11 +7,6 @@
 			"email" : "quentin@bonaventure.xyz"
 		}
 	],
-	"repositories" : [{
-			"type" : "vcs",
-			"url" : "https://github.com/qbonaventure/discord-model"
-		}
-	],
 	"require" : {
 		"qbonaventure/discord-model" : "dev-master"
 	},
