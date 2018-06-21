@@ -7,6 +7,11 @@
 			"email" : "quentin@bonaventure.xyz"
 		}
 	],
+	"repositories" : [{
+			"type" : "vcs",
+			"url" : "git@github.com:qbonaventure/discord-db-postgresql"
+		}
+	],
 	"require" : {
 		"qbonaventure/discord-model" : "dev-master"
 	},
