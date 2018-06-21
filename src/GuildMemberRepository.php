@@ -3,6 +3,7 @@ namespace FTC\Discord\Db\Postgresql;
 
 use FTC\Discord\Model\GuildMemberRepository as RepositoryInterface;
 use FTC\Discord\Model\GuildMember;
+use FTC\Discord\Model\GuildRole;
 
 class GuildMemberRepository extends PostgresqlRepository implements RepositoryInterface
 {
@@ -18,8 +19,8 @@ class GuildMemberRepository extends PostgresqlRepository implements RepositoryIn
     const USER_QUERY = <<<'EOT'
 select users.id, users.username, json_agg(guilds_roles.*) as roles
 from users
-LEFT join users_roles on users_roles.user_id = users.id
-LEFT join guilds_roles on guilds_roles.id = users_roles.role_id AND guilds_roles.guild_id = :guild_id
+join users_roles on users_roles.user_id = users.id
+join guilds_roles on guilds_roles.id = users_roles.role_id AND guilds_roles.guild_id = :guild_id
 WHERE users.id = :user_id
 group by users.id
 EOT;
@@ -73,7 +74,7 @@ EOT;
     {
     }
     
-    public function getGuildMemberById(int $guildId, int $memberId) : ?GuildMember
+    public function getGuildMember(int $guildId, int $memberId) : ?GuildMember
     {
         $stmt = $this->persistence->prepare(self::USER_QUERY);
         $stmt->bindValue('user_id', $memberId, \PDO::PARAM_INT);
@@ -81,8 +82,13 @@ EOT;
         $stmt->execute();
         
         $userArray = $stmt->fetch(\PDO::FETCH_ASSOC);
+        $roles = json_decode($userArray['roles'], true);
+        foreach ($roles as $key => $role) {
+            $roles[$key] = GuildRole::fromDbRow($role);
+        }
+        $userArray['roles'] = $roles;
         
-        return $userArray;
+        return GuildMember::fromDb($userArray);
     }
 
     
