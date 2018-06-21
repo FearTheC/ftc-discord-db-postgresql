@@ -79,6 +79,8 @@ EOT;
         $q->bindValue('user_id', $memberId, \PDO::PARAM_INT);
         $q->bindParam('guild_id', $guildId, \PDO::PARAM_INT);
         $q->execute();
+        
+        return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
     
