@@ -75,10 +75,10 @@ EOT;
     
     public function getGuildMemberById(int $guildId, int $memberId) : ?GuildMember
     {
-        $q = $this->persistence->prepare(self::USER_QUERY);
-        $q->bindValue('user_id', $memberId, \PDO::PARAM_INT);
-        $q->bindParam('guild_id', $guildId, \PDO::PARAM_INT);
-        $q->execute();
+        $stmt = $this->persistence->prepare(self::USER_QUERY);
+        $stmt->bindValue('user_id', $memberId, \PDO::PARAM_INT);
+        $stmt->bindParam('guild_id', $guildId, \PDO::PARAM_INT);
+        $stmt->execute();
         
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
