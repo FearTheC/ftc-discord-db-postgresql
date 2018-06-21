@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "212e171d4e44b7d2103b2a080173556e",
+    "content-hash": "d824daacc28dd97c3aac599dc3a509cb",
     "packages": [
         {
             "name": "qbonaventure/discord-model",
@@ -12,12 +12,12 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/QBonaventure/discord-model.git",
-                "reference": "010958f73a793ce0cb2a2bfce9ee879fbc067ba5"
+                "reference": "f9f0976393b984378b14d65a864fb469d5190365"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/QBonaventure/discord-model/zipball/010958f73a793ce0cb2a2bfce9ee879fbc067ba5",
-                "reference": "010958f73a793ce0cb2a2bfce9ee879fbc067ba5",
+                "url": "https://api.github.com/repos/QBonaventure/discord-model/zipball/f9f0976393b984378b14d65a864fb469d5190365",
+                "reference": "f9f0976393b984378b14d65a864fb469d5190365",
                 "shasum": ""
             },
             "require-dev": {
@@ -39,7 +39,7 @@
                     "email": "quentin@bonaventure.xyz"
                 }
             ],
-            "time": "2018-06-20T07:08:02+00:00"
+            "time": "2018-06-21T09:10:05+00:00"
         }
     ],
     "packages-dev": [],
