@@ -80,7 +80,9 @@ EOT;
         $stmt->bindParam('guild_id', $guildId, \PDO::PARAM_INT);
         $stmt->execute();
         
-        return $stmt->fetch(\PDO::FETCH_ASSOC);
+        $userArray = $stmt->fetch(\PDO::FETCH_ASSOC);
+        
+        return $userArray;
     }
 
     
