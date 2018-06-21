@@ -15,6 +15,15 @@ class GuildMemberRepository extends PostgresqlRepository implements RepositoryIn
     
     const ADD_USER_ROLE = "INSERT INTO users_roles VALUES (:user_id, role)";
     
+    const USER_QUERY = <<<'EOT'
+select users.id, users.username, json_agg(guilds_roles.*) as roles
+from users
+LEFT join users_roles on users_roles.user_id = users.id
+LEFT join guilds_roles on guilds_roles.id = users_roles.role_id AND guilds_roles.guild_id = :guild_id
+WHERE users.id = :user_id
+group by users.id
+EOT;
+    
     /**
      * @var GuildMember[]
      */
@@ -62,7 +71,14 @@ class GuildMemberRepository extends PostgresqlRepository implements RepositoryIn
     
     public function findById(int $id) : GuildMember
     {
-        
+    }
+    
+    public function getGuildMemberById(int $guildId, int $memberId) : ?GuildMember
+    {
+        $q = $this->persistence->prepare(self::USER_QUERY);
+        $q->bindValue('user_id', $memberId, \PDO::PARAM_INT);
+        $q->bindParam('guild_id', $guildId, \PDO::PARAM_INT);
+        $q->execute();
     }
 
     
