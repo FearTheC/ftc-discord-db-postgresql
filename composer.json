@@ -9,7 +9,7 @@
 	],
 	"repositories" : [{
 			"type" : "vcs",
-			"url" : "git@github.com:qbonaventure/discord-db-postgresql"
+			"url" : "git@github.com:qbonaventure/discord-model"
 		}
 	],
 	"require" : {
