@@ -1,14 +1,23 @@
 <?php
+declare(strict_types=1);
+
 namespace FTC\Discord\Db\Postgresql;
 
 use FTC\Discord\Model\GuildMemberRepository as RepositoryInterface;
 use FTC\Discord\Model\GuildMember;
 use FTC\Discord\Model\GuildRole;
+use FTC\Discord\Model\Collection\GuildMemberCollection;
 
 class GuildMemberRepository extends PostgresqlRepository implements RepositoryInterface
 {
     
-    const GET_ALL_QUERY = 'SELECT id, username FROM users ORDER BY id DESC';
+    const GET_ALL_QUERY = <<<'EOT'
+SELECT users.id, users.username, JSONB_AGG(guilds_roles) as roles
+FROM users
+JOIN users_roles ON users_roles.user_id = users.id
+JOIN guilds_roles on guilds_roles.id = users_roles.role_id
+GROUP BY users.id, users.username
+EOT;
     
     const ADD_USER_Q = "INSERT INTO users VALUES (:user_id, :username) ON CONFLICT ON CONSTRAINT users_pkey DO NOTHING";
     
@@ -17,12 +26,12 @@ class GuildMemberRepository extends PostgresqlRepository implements RepositoryIn
     const ADD_USER_ROLE = "INSERT INTO users_roles VALUES (:user_id, role)";
     
     const USER_QUERY = <<<'EOT'
-select users.id, users.username, json_agg(guilds_roles.*) as roles
+select users.id, users.username, jsonb_agg(guilds_roles) as roles
 from users
 join users_roles on users_roles.user_id = users.id
 join guilds_roles on guilds_roles.id = users_roles.role_id AND guilds_roles.guild_id = :guild_id
 WHERE users.id = :user_id
-group by users.id
+group by users.id, users.username
 EOT;
     
     /**
@@ -62,12 +71,22 @@ EOT;
         
     }
     
-    public function getAll() : array
+    public function getAll() : GuildMemberCollection
     {
         $stmt = $this->persistence->prepare(self::GET_ALL_QUERY);
         $stmt->execute();
+        $array =  $stmt->fetchAll(\PDO::FETCH_ASSOC);   
+        $coll = $this->fromArray($array, $coll);
         
-        return $stmt->fetchAll();
+        return $coll;
+    }
+    
+    private function fromArray($array)
+    {
+        $array = array_map([GuildMember::class, 'fromDb'], $array);
+        return new GuildMemberCollection(...$array);
+
+        return $collee;
     }
     
     public function findById(int $id) : GuildMember
@@ -82,11 +101,11 @@ EOT;
         $stmt->execute();
         
         $userArray = $stmt->fetch(\PDO::FETCH_ASSOC);
-        $roles = json_decode($userArray['roles'], true);
-        foreach ($roles as $key => $role) {
-            $roles[$key] = GuildRole::fromDbRow($role);
-        }
-        $userArray['roles'] = $roles;
+        //         $roles = json_decode($userArray['roles'], true);     int(384396784807575552) int(189003940157718530) 
+//         foreach ($roles as $key => $role) {
+//             $roles[$key] = GuildRole::fromDbRow($role);
+//         }
+//         $userArray['roles'] = $roles;
         
         return GuildMember::fromDb($userArray);
     }
