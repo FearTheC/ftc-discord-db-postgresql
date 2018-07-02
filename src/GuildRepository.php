@@ -22,7 +22,7 @@ class GuildRepository extends PostgresqlRepository implements RepositoryInterfac
         
     }
     
-    public function findById(int $id) : Guild
+    public function findById(int $id) : ?Guild
     {
         
     }
