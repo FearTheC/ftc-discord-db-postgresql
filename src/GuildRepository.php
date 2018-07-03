@@ -5,13 +5,30 @@ namespace FTC\Discord\Db\Postgresql;
 use FTC\Discord\Model\GuildRepository as RepositoryInterface;
 use FTC\Discord\Model\Guild;
 use FTC\Discord\Model\GuildMember;
+use FTC\Discord\Model\ValueObject\Snowflake;
+use FTC\Discord\Model\GuildRole;
+use FTC\Discord\Model\Collection\GuildMemberCollection;
+use FTC\Discord\Model\Collection\GuildRoleCollection;
+use FTC\Discord\Model\User;
+use FTC\Discord\Model\ValueObject\Snowflake\UserId;
 
 class GuildRepository extends PostgresqlRepository implements RepositoryInterface
 {
     
-    const INSERT_GUILD = 'INSERT INTO guilds (id, name) ON CONFLICT DO UPDATE';
-    const INSERT_GUILD_MEMBER = 'INSERT INTO guilds_users (id, user_id) ON CONFLICT DO UPDATE';
-    const INSERT_GUILD_ROLE = 'INSERT INTO guilds_roles (role_id, id, name) ON CONFLICT DO UPDATE';
+    const SD = <<<'EOT'
+CREATE OR REPLACE VIEW guilds_aggregates AS
+SELECT guilds.id, guilds.name, jsonb_agg(guilds_users.id) as members, jsonb_agg(guilds_roles.*) AS roles FROM guilds
+LEFT JOIN guilds_users ON guilds_users.guild_id = guilds.id
+LEFT JOIN guilds_roles ON guilds_roles.guild_id = guilds.id
+GROUP BY guilds.id, guilds.name
+EOT;
+    const SELECT_GUILD = <<<'EOT'
+SELECT * from guilds_aggregates
+WHERE id = :id;
+EOT;
+    const INSERT_GUILD = "INSERT INTO guilds VALUES (:id, :name, :owner_id) ON CONFLICT (id) DO UPDATE SET name = :name, owner_id = :owner_id";
+    const INSERT_GUILD_MEMBER = 'INSERT INTO guilds_users VALUES (:id, :user_id, :nickname)  ON CONFLICT (guild_id, user_id) DO UPDATE SET nickname = :nickname';
+    const INSERT_GUILD_ROLE = 'INSERT INTO guilds_roles VALUES (:id, :guild_id, :name) ON CONFLICT DO NOTHING';
 
     /**
      * @var Guild[]
@@ -25,7 +42,12 @@ class GuildRepository extends PostgresqlRepository implements RepositoryInterfac
         array_map(
             [$this, 'saveMember'],
             $guild->getMembers()->toArray(),
-            array_fill(0, $guild->getMembers()->count(), $guild->getId()->get())
+            array_fill(0, $guild->getMembers()->count(), $guild->getId())
+        );
+        array_map(
+            [$this, 'saveRole'],
+            $guild->getRoles()->toArray(),
+            array_fill(0, $guild->getRoles()->count(), $guild->getId())
         );
         $this->persistence->commit();
     }
@@ -35,24 +57,64 @@ class GuildRepository extends PostgresqlRepository implements RepositoryInterfac
         
     }
     
-    public function findById(int $id) : ?Guild
+    public function findById(Snowflake $id) : ?Guild
     {
+        $stmt = $this->persistence->prepare(self::SD);
+        $stmt->execute();
         
+        $stmt = $this->persistence->prepare(self::SELECT_GUILD);
+        $stmt->bindValue('id', $id->get(), \PDO::PARAM_INT);
+        $stmt->execute();
+        $row = $stmt->fetch(\PDO::FETCH_ASSOC);
+        
+        $guildId = Snowflake::create($row['id']);
+        
+        
+        $members = new GuildMemberCollection();
+        $roles = new GuildRoleCollection();
+        
+        foreach (json_decode($row['roles'], true) as $role) {
+            $roles->add(GuildRole::create(Snowflake::create($role['id']), $role['name']));
+        }
+        
+        foreach (json_decode($row['members'], true) as $member) {
+            $members->add(GuildMember::create($guildId, UserId::create($member['user_id']), $roles,'nickname'));
+        }
+
+        $guild = Guild::create(
+            $guildId,
+            $row['name'],
+            Snowflake::create(272341331328761888),
+            $roles,
+            $members);
+
+        return $guild;
     }
     
     private function saveGuild(Guild $guild) : void
     {
         $stmt = $this->persistence->prepare(self::INSERT_GUILD);
-        $stmt->bindParam('id', $guild->getId()->get(), \PDO::PARAM_INT);
-        $stmt->bindParam('name', $guild->getName(), \PDO::PARAM_STR);
+        $stmt->bindValue('id', $guild->getId()->get(), \PDO::PARAM_INT);
+        $stmt->bindValue('name', $guild->getName(), \PDO::PARAM_STR);
+        $stmt->bindValue('owner_id', $guild->getOwnerId()->get(), \PDO::PARAM_INT);
         $stmt->execute();
     }
-
+    
     private function saveMember(GuildMember $member, Snowflake $guildId) : void
     {
         $stmt = $this->persistence->prepare(self::INSERT_GUILD_MEMBER);
-        $stmt->bindParam('id', $guildId->get(), \PDO::PARAM_INT);
-        $stmt->bindParam('user_id', $member->getId()->get(), \PDO::PARAM_INT);
+        $stmt->bindValue('id', $guildId->get(), \PDO::PARAM_INT);
+        $stmt->bindValue('user_id', $member->getId()->get(), \PDO::PARAM_INT);
+        $stmt->bindValue('nickname', $member->getNickname(), \PDO::PARAM_STR);
+        $stmt->execute();
+    }
+    
+    private function saveRole(GuildRole $role, Snowflake $guildId) : void
+    {
+        $stmt = $this->persistence->prepare(self::INSERT_GUILD_ROLE);
+        $stmt->bindValue('guild_id', $guildId->get(), \PDO::PARAM_INT);
+        $stmt->bindValue('id', $role->getId()->get(), \PDO::PARAM_INT);
+        $stmt->bindValue('name', $role->getName(), \PDO::PARAM_STR);
         $stmt->execute();
     }
 
