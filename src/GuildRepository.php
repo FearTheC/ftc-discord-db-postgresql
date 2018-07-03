@@ -11,6 +11,7 @@ use FTC\Discord\Model\Collection\GuildMemberCollection;
 use FTC\Discord\Model\Collection\GuildRoleCollection;
 use FTC\Discord\Model\User;
 use FTC\Discord\Model\ValueObject\Snowflake\UserId;
+use FTC\Discord\Model\ValueObject\Snowflake\GuildId;
 
 class GuildRepository extends PostgresqlRepository implements RepositoryInterface
 {
@@ -57,7 +58,7 @@ EOT;
         
     }
     
-    public function findById(Snowflake $id) : ?Guild
+    public function findById(GuildId $id) : ?Guild
     {
         $stmt = $this->persistence->prepare(self::SD);
         $stmt->execute();
@@ -95,7 +96,7 @@ EOT;
     {
         $stmt = $this->persistence->prepare(self::INSERT_GUILD);
         $stmt->bindValue('id', $guild->getId()->get(), \PDO::PARAM_INT);
-        $stmt->bindValue('name', $guild->getName(), \PDO::PARAM_STR);
+        $stmt->bindValue('name', (string) $guild->getName(), \PDO::PARAM_STR);
         $stmt->bindValue('owner_id', $guild->getOwnerId()->get(), \PDO::PARAM_INT);
         $stmt->execute();
     }

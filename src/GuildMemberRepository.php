@@ -7,6 +7,9 @@ use FTC\Discord\Model\GuildMemberRepository as RepositoryInterface;
 use FTC\Discord\Model\GuildMember;
 use FTC\Discord\Model\GuildRole;
 use FTC\Discord\Model\Collection\GuildMemberCollection;
+use FTC\Discord\Model\ValueObject\Snowflake\UserId;
+use FTC\Discord\Model\ValueObject\Snowflake\RoleId;
+use FTC\Discord\Model\ValueObject\Snowflake\GuildId;
 
 class GuildMemberRepository extends PostgresqlRepository implements RepositoryInterface
 {
@@ -58,7 +61,7 @@ EOT;
         $q->execute();
     }
     
-    public function addRole(int $memberId, int $roleName)
+    public function addRole(GuildMember $memberId, GuildRole $roleName)
     {
         $q = $this->persistence->prepare(self::ADD_USER_ROLE);
         $q->bindValue('user_id', $member->getId(), \PDO::PARAM_INT);
@@ -89,23 +92,19 @@ EOT;
         return $collee;
     }
     
-    public function findById(int $id) : GuildMember
+    public function findById(UserId $id) : GuildMember
     {
     }
     
-    public function getGuildMember(int $guildId, int $memberId) : ?GuildMember
+    public function getGuildMember(GuildId $guildId, UserId $memberId) : ?GuildMember
     {
         $stmt = $this->persistence->prepare(self::USER_QUERY);
-        $stmt->bindValue('user_id', $memberId, \PDO::PARAM_INT);
-        $stmt->bindParam('guild_id', $guildId, \PDO::PARAM_INT);
+        $stmt->bindValue('user_id', (string) $memberId, \PDO::PARAM_INT);
+        $stmt->bindParam('guild_id', (string) $guildId, \PDO::PARAM_INT);
         $stmt->execute();
         
         $userArray = $stmt->fetch(\PDO::FETCH_ASSOC);
-        //         $roles = json_decode($userArray['roles'], true);     int(384396784807575552) int(189003940157718530) 
-//         foreach ($roles as $key => $role) {
-//             $roles[$key] = GuildRole::fromDbRow($role);
-//         }
-//         $userArray['roles'] = $roles;
+
         
         return GuildMember::fromDb($userArray);
     }
