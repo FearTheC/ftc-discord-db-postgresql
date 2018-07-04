@@ -23,13 +23,19 @@ LEFT JOIN guilds_users ON guilds_users.guild_id = guilds.id
 LEFT JOIN guilds_roles ON guilds_roles.guild_id = guilds.id
 GROUP BY guilds.id, guilds.name
 EOT;
+
     const SELECT_GUILD = <<<'EOT'
 SELECT * from guilds_aggregates
 WHERE id = :id;
 EOT;
+
     const INSERT_GUILD = "INSERT INTO guilds VALUES (:id, :name, :owner_id) ON CONFLICT (id) DO UPDATE SET name = :name, owner_id = :owner_id";
     const INSERT_GUILD_MEMBER = 'INSERT INTO guilds_users VALUES (:id, :user_id, :nickname)  ON CONFLICT (guild_id, user_id) DO UPDATE SET nickname = :nickname';
-    const INSERT_GUILD_ROLE = 'INSERT INTO guilds_roles VALUES (:id, :guild_id, :name) ON CONFLICT DO NOTHING';
+    
+    const INSERT_GUILD_ROLE = <<<'EOT'
+INSERT INTO guilds_roles VALUES (:id, :guild_id, :name, :color, :position, :permissions, :mentionable, :hoist)
+ON CONFLICT (id) DO UPDATE SET name = :name, color=:color, position=:position, permissions=:permissions, is_hoisted=:hoist, is_mentionable=:mentionable
+EOT;
 
     /**
      * @var Guild[]
@@ -60,36 +66,36 @@ EOT;
     
     public function findById(GuildId $id) : ?Guild
     {
-        $stmt = $this->persistence->prepare(self::SD);
-        $stmt->execute();
+//         $stmt = $this->persistence->prepare(self::SD);
+//         $stmt->execute();
         
-        $stmt = $this->persistence->prepare(self::SELECT_GUILD);
-        $stmt->bindValue('id', $id->get(), \PDO::PARAM_INT);
-        $stmt->execute();
-        $row = $stmt->fetch(\PDO::FETCH_ASSOC);
+//         $stmt = $this->persistence->prepare(self::SELECT_GUILD);
+//         $stmt->bindValue('id', $id->get(), \PDO::PARAM_INT);
+//         $stmt->execute();
+//         $row = $stmt->fetch(\PDO::FETCH_ASSOC);
         
-        $guildId = Snowflake::create($row['id']);
+//         $guildId = Snowflake::create($row['id']);
         
         
-        $members = new GuildMemberCollection();
-        $roles = new GuildRoleCollection();
+//         $members = new GuildMemberCollection();
+//         $roles = new GuildRoleCollection();
         
-        foreach (json_decode($row['roles'], true) as $role) {
-            $roles->add(GuildRole::create(Snowflake::create($role['id']), $role['name']));
-        }
+//         foreach (json_decode($row['roles'], true) as $role) {
+//             $roles->add(GuildRole::create(Snowflake::create($role['id']), $role['name']));
+//         }
         
-        foreach (json_decode($row['members'], true) as $member) {
-            $members->add(GuildMember::create($guildId, UserId::create($member['user_id']), $roles,'nickname'));
-        }
+//         foreach (json_decode($row['members'], true) as $member) {
+//             $members->add(GuildMember::create($guildId, UserId::create($member['user_id']), $roles,'nickname'));
+//         }
 
-        $guild = Guild::create(
-            $guildId,
-            $row['name'],
-            Snowflake::create(272341331328761888),
-            $roles,
-            $members);
+//         $guild = Guild::create(
+//             $guildId,
+//             $row['name'],
+//             Snowflake::create(272341331328761888),
+//             $roles,
+//             $members);
 
-        return $guild;
+//         return $guild;
     }
     
     private function saveGuild(Guild $guild) : void
@@ -116,6 +122,12 @@ EOT;
         $stmt->bindValue('guild_id', $guildId->get(), \PDO::PARAM_INT);
         $stmt->bindValue('id', $role->getId()->get(), \PDO::PARAM_INT);
         $stmt->bindValue('name', $role->getName(), \PDO::PARAM_STR);
+        $stmt->bindValue('color', $role->getColor()->getInteger(), \PDO::PARAM_INT);
+        $stmt->bindValue('position', $role->getPosition(), \PDO::PARAM_INT);
+        $stmt->bindValue('name', $role->getName(), \PDO::PARAM_STR);
+        $stmt->bindValue('permissions', $role->getPermissions(), \PDO::PARAM_INT);
+        $stmt->bindValue('mentionable', $role->isMentionable(), \PDO::PARAM_BOOL);
+        $stmt->bindValue('hoist', $role->isHoisted(), \PDO::PARAM_BOOL);
         $stmt->execute();
     }
 
