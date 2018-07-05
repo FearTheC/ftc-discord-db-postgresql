@@ -1,4 +1,5 @@
-<?php
+<?php declare(strict_types=1);
+
 namespace FTC\Discord\Db\Postgresql;
 
 
@@ -12,6 +13,9 @@ use FTC\Discord\Model\Collection\GuildRoleCollection;
 use FTC\Discord\Model\User;
 use FTC\Discord\Model\ValueObject\Snowflake\UserId;
 use FTC\Discord\Model\ValueObject\Snowflake\GuildId;
+use FTC\Discord\Model\Channel\GuildChannel;
+use FTC\Discord\Model\Channel\GuildChannel\TextChannel;
+use FTC\Discord\Model\Channel\GuildChannel\Voice;
 
 class GuildRepository extends PostgresqlRepository implements RepositoryInterface
 {
@@ -30,11 +34,30 @@ WHERE id = :id;
 EOT;
 
     const INSERT_GUILD = "INSERT INTO guilds VALUES (:id, :name, :owner_id) ON CONFLICT (id) DO UPDATE SET name = :name, owner_id = :owner_id";
-    const INSERT_GUILD_MEMBER = 'INSERT INTO guilds_users VALUES (:id, :user_id, :nickname)  ON CONFLICT (guild_id, user_id) DO UPDATE SET nickname = :nickname';
+    
+    const INSERT_GUILD_MEMBER = <<<'EOT'
+INSERT INTO guilds_users VALUES (:id, :user_id, :nickname, :joined_at)
+ON CONFLICT (guild_id, user_id) DO UPDATE SET nickname = :nickname
+EOT;
     
     const INSERT_GUILD_ROLE = <<<'EOT'
 INSERT INTO guilds_roles VALUES (:id, :guild_id, :name, :color, :position, :permissions, :mentionable, :hoist)
 ON CONFLICT (id) DO UPDATE SET name = :name, color=:color, position=:position, permissions=:permissions, is_hoisted=:hoist, is_mentionable=:mentionable
+EOT;
+
+    const INSERT_GUILD_CHANNEL = <<<'EOT'
+INSERT INTO guilds_channels VALUES (:id, :guild_id, :name, :position, :type_id, :permission_overwrite, :category_id)
+ON CONFLICT (id) DO UPDATE SET name = :name, position = :position, permission_overwrite = :permission_overwrite, category_id = :category_id; 
+EOT;
+    
+    const INSERT_TEXT_CHANNEL = <<<'EOT'
+INSERT INTO guilds_text_channels VALUES (:channel_id, :topic)
+ON CONFLICT (channel_id) DO UPDATE SET topic = :topic;
+EOT;
+    
+    const INSERT_VOICE_CHANNEL = <<<'EOT'
+INSERT INTO guilds_voice_channels VALUES (:channel_id, :bitrate, :user_limit)
+ON CONFLICT (channel_id) DO UPDATE SET bitrate = :bitrate, user_limit = :user_limit;
 EOT;
 
     /**
@@ -44,19 +67,31 @@ EOT;
     
     public function save(Guild $guild)
     {
+        $start = microtime(true);
         $this->persistence->beginTransaction();
         $this->saveGuild($guild);
+        
         array_map(
             [$this, 'saveMember'],
             $guild->getMembers()->toArray(),
             array_fill(0, $guild->getMembers()->count(), $guild->getId())
-        );
+            );
+        
         array_map(
             [$this, 'saveRole'],
             $guild->getRoles()->toArray(),
             array_fill(0, $guild->getRoles()->count(), $guild->getId())
-        );
+            );
+        
+        array_map(
+            [$this, 'saveChannel'],
+            $guild->getChannels()->toArray(),
+            array_fill(0, $guild->getChannels()->count(), $guild->getId())
+            );
+        
         $this->persistence->commit();
+        
+        var_dump(microtime(true) - $start);
     }
     
     public function getAll() : array
@@ -107,16 +142,17 @@ EOT;
         $stmt->execute();
     }
     
-    private function saveMember(GuildMember $member, Snowflake $guildId) : void
+    private function saveMember(GuildMember $member, GuildId $guildId) : void
     {
         $stmt = $this->persistence->prepare(self::INSERT_GUILD_MEMBER);
         $stmt->bindValue('id', $guildId->get(), \PDO::PARAM_INT);
         $stmt->bindValue('user_id', $member->getId()->get(), \PDO::PARAM_INT);
         $stmt->bindValue('nickname', $member->getNickname(), \PDO::PARAM_STR);
+        $stmt->bindValue('joined_at', (string) $member->getJoinDate()->format('c'), \PDO::PARAM_STR);
         $stmt->execute();
     }
     
-    private function saveRole(GuildRole $role, Snowflake $guildId) : void
+    private function saveRole(GuildRole $role, GuildId $guildId) : void
     {
         $stmt = $this->persistence->prepare(self::INSERT_GUILD_ROLE);
         $stmt->bindValue('guild_id', $guildId->get(), \PDO::PARAM_INT);
@@ -124,11 +160,42 @@ EOT;
         $stmt->bindValue('name', $role->getName(), \PDO::PARAM_STR);
         $stmt->bindValue('color', $role->getColor()->getInteger(), \PDO::PARAM_INT);
         $stmt->bindValue('position', $role->getPosition(), \PDO::PARAM_INT);
-        $stmt->bindValue('name', $role->getName(), \PDO::PARAM_STR);
         $stmt->bindValue('permissions', $role->getPermissions(), \PDO::PARAM_INT);
         $stmt->bindValue('mentionable', $role->isMentionable(), \PDO::PARAM_BOOL);
         $stmt->bindValue('hoist', $role->isHoisted(), \PDO::PARAM_BOOL);
         $stmt->execute();
+    }
+    
+    private function saveChannel(GuildChannel $channel, GuildId $guildId)
+    {
+        $channel->getPermissionOverwrites()->toJson();
+        if ($categoryId = $channel->getCategoryId()) {
+            $categoryId = $categoryId->get();
+        }
+        $stmt = $this->persistence->prepare(self::INSERT_GUILD_CHANNEL);
+        $stmt->bindValue('guild_id', $guildId->get(), \PDO::PARAM_INT);
+        $stmt->bindValue('id', $channel->getId()->get(), \PDO::PARAM_INT);
+        $stmt->bindValue('name', $channel->getName(), \PDO::PARAM_STR);
+        $stmt->bindValue('position', $channel->getPosition(), \PDO::PARAM_INT);
+        $stmt->bindValue('type_id', $channel->getTypeId(), \PDO::PARAM_INT);
+        $stmt->bindValue('permission_overwrite', $channel->getPermissionOverwrites()->toJson(), \PDO::PARAM_INT);
+        $stmt->bindValue('category_id', $categoryId, \PDO::PARAM_INT);
+        $stmt->execute();
+        
+        if ($channel instanceof TextChannel && $topic = $channel->getTopic()) {
+            $stmt = $this->persistence->prepare(self::INSERT_TEXT_CHANNEL);
+            $stmt->bindValue('channel_id', $channel->getId()->get(), \PDO::PARAM_INT);
+            $stmt->bindValue('topic', (string) $topic, \PDO::PARAM_STR);
+            $stmt->execute();
+        }
+        
+        if ($channel instanceof Voice) {
+            $stmt = $this->persistence->prepare(self::INSERT_VOICE_CHANNEL);
+            $stmt->bindValue('channel_id', $channel->getId()->get(), \PDO::PARAM_INT);
+            $stmt->bindValue('bitrate', $channel->getBitrate(), \PDO::PARAM_INT);
+            $stmt->bindValue('user_limit', $channel->getUserLimit(), \PDO::PARAM_INT);
+            $stmt->execute();
+        }
     }
 
 }
