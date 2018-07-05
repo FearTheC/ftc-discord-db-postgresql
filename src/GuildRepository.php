@@ -13,6 +13,7 @@ use FTC\Discord\Model\Channel\GuildChannel;
 use FTC\Discord\Model\Channel\GuildChannel\TextChannel;
 use FTC\Discord\Model\Channel\GuildChannel\Voice;
 use FTC\Discord\Db\Postgresql\Mapper\GuildMemberMapper;
+use FTC\Discord\Model\ValueObject\Snowflake\RoleId;
 
 class GuildRepository extends PostgresqlRepository implements RepositoryInterface
 {
@@ -43,10 +44,10 @@ EOT;
 INSERT INTO guilds_users VALUES (:id, :user_id, :nickname, :joined_at)
 ON CONFLICT (guild_id, user_id) DO UPDATE SET nickname = :nickname
 EOT;
-    
+
     const INSERT_GUILD_MEMBER_ROLES = <<<'EOT'
-INSERT INTO users_roles VALUES (:user_id, :roles)
-ON CONFLICT (user_id) DO UPDATE SET roles = :roles
+INSERT INTO users_roles VALUES (:user_id, :role_id)
+ON CONFLICT (user_id, role_id) DO NOTHING
 EOT;
     
     const INSERT_GUILD_ROLE = <<<'EOT'
@@ -81,15 +82,15 @@ EOT;
         $this->saveGuild($guild);
         
         array_map(
-            [$this, 'saveMember'],
-            $guild->getMembers()->toArray(),
-            array_fill(0, $guild->getMembers()->count(), $guild->getId())
-            );
-        
-        array_map(
             [$this, 'saveRole'],
             $guild->getRoles()->toArray(),
             array_fill(0, $guild->getRoles()->count(), $guild->getId())
+            );
+        
+        array_map(
+            [$this, 'saveMember'],
+            $guild->getMembers()->toArray(),
+            array_fill(0, $guild->getMembers()->count(), $guild->getId())
             );
         
         array_map(
@@ -164,14 +165,28 @@ EOT;
         $stmt->execute();
     }
     
+    
     private function saveMember(GuildMember $member, GuildId $guildId) : void
     {
-        var_dump($member);
         $stmt = $this->persistence->prepare(self::INSERT_GUILD_MEMBER);
         $stmt->bindValue('id', $guildId->get(), \PDO::PARAM_INT);
         $stmt->bindValue('user_id', $member->getId()->get(), \PDO::PARAM_INT);
         $stmt->bindValue('nickname', $member->getNickname(), \PDO::PARAM_STR);
         $stmt->bindValue('joined_at', (string) $member->getJoinDate()->format('c'), \PDO::PARAM_STR);
+        $stmt->execute();
+        
+        array_map(
+            [$this, 'saveMemberRole'],
+            $member->getRoles()->getIterator(),
+            array_fill(0, $member->getRoles()->count(), $member->getId())
+        );
+    }
+    
+    private function saveMemberRole(RoleId $roleId, UserId $memberId)
+    {
+        $stmt = $this->persistence->prepare(self::INSERT_GUILD_MEMBER_ROLES);
+        $stmt->bindValue('user_id', $memberId->get(), \PDO::PARAM_INT);
+        $stmt->bindValue('role_id', $roleId->get(), \PDO::PARAM_INT);
         $stmt->execute();
     }
     
