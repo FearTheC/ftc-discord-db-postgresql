@@ -95,19 +95,6 @@ EOT;
     public function findById(UserId $id) : GuildMember
     {
     }
-    
-    public function getGuildMember(GuildId $guildId, UserId $memberId) : ?GuildMember
-    {
-        $stmt = $this->persistence->prepare(self::USER_QUERY);
-        $stmt->bindValue('user_id', (string) $memberId, \PDO::PARAM_INT);
-        $stmt->bindParam('guild_id', (string) $guildId, \PDO::PARAM_INT);
-        $stmt->execute();
-        
-        $userArray = $stmt->fetch(\PDO::FETCH_ASSOC);
-
-        
-        return GuildMember::fromDb($userArray);
-    }
 
     
 }

@@ -6,16 +6,13 @@ namespace FTC\Discord\Db\Postgresql;
 use FTC\Discord\Model\GuildRepository as RepositoryInterface;
 use FTC\Discord\Model\Guild;
 use FTC\Discord\Model\GuildMember;
-use FTC\Discord\Model\ValueObject\Snowflake;
 use FTC\Discord\Model\GuildRole;
-use FTC\Discord\Model\Collection\GuildMemberCollection;
-use FTC\Discord\Model\Collection\GuildRoleCollection;
-use FTC\Discord\Model\User;
 use FTC\Discord\Model\ValueObject\Snowflake\UserId;
 use FTC\Discord\Model\ValueObject\Snowflake\GuildId;
 use FTC\Discord\Model\Channel\GuildChannel;
 use FTC\Discord\Model\Channel\GuildChannel\TextChannel;
 use FTC\Discord\Model\Channel\GuildChannel\Voice;
+use FTC\Discord\Db\Postgresql\Mapper\GuildMemberMapper;
 
 class GuildRepository extends PostgresqlRepository implements RepositoryInterface
 {
@@ -33,11 +30,23 @@ SELECT * from guilds_aggregates
 WHERE id = :id;
 EOT;
 
+    const SELECT_GUILD_MEMBER = <<<'EOT'
+SELECT guilds_users.user_id as id, guilds_users.nickname, guilds_users.joined_date, json_agg(users_roles.role_id) AS roles_ids FROM guilds_users
+JOIN users_roles ON users_roles.user_id = guilds_users.user_id
+where guilds_users.guild_id = :guild_id AND guilds_users.user_id = :member_id
+GROUP BY guilds_users.user_id, guilds_users.nickname, guilds_users.joined_date
+EOT;
+
     const INSERT_GUILD = "INSERT INTO guilds VALUES (:id, :name, :owner_id) ON CONFLICT (id) DO UPDATE SET name = :name, owner_id = :owner_id";
     
     const INSERT_GUILD_MEMBER = <<<'EOT'
 INSERT INTO guilds_users VALUES (:id, :user_id, :nickname, :joined_at)
 ON CONFLICT (guild_id, user_id) DO UPDATE SET nickname = :nickname
+EOT;
+    
+    const INSERT_GUILD_MEMBER_ROLES = <<<'EOT'
+INSERT INTO users_roles VALUES (:user_id, :roles)
+ON CONFLICT (user_id) DO UPDATE SET roles = :roles
 EOT;
     
     const INSERT_GUILD_ROLE = <<<'EOT'
@@ -90,8 +99,6 @@ EOT;
             );
         
         $this->persistence->commit();
-        
-        var_dump(microtime(true) - $start);
     }
     
     public function getAll() : array
@@ -133,6 +140,21 @@ EOT;
 //         return $guild;
     }
     
+    
+    
+    public function getGuildMember(GuildId $guildId, UserId $memberId) : ?GuildMember
+    {
+        $stmt = $this->persistence->prepare(self::SELECT_GUILD_MEMBER);
+        $stmt->bindValue('member_id', (string) $memberId, \PDO::PARAM_INT);
+        $stmt->bindValue('guild_id', (string) $guildId, \PDO::PARAM_INT);
+        $stmt->execute();
+        
+        $userArray = $stmt->fetch(\PDO::FETCH_ASSOC);
+        
+        
+        return GuildMemberMapper::create($userArray);
+    }
+    
     private function saveGuild(Guild $guild) : void
     {
         $stmt = $this->persistence->prepare(self::INSERT_GUILD);
@@ -144,6 +166,7 @@ EOT;
     
     private function saveMember(GuildMember $member, GuildId $guildId) : void
     {
+        var_dump($member);
         $stmt = $this->persistence->prepare(self::INSERT_GUILD_MEMBER);
         $stmt->bindValue('id', $guildId->get(), \PDO::PARAM_INT);
         $stmt->bindValue('user_id', $member->getId()->get(), \PDO::PARAM_INT);
