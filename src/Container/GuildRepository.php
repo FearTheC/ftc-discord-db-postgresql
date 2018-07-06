@@ -1,5 +1,6 @@
-<?php
-namespace FTC\Discord\Db\Postgresql\Factory;
+<?php declare(strict_types=1);
+
+namespace FTC\Discord\Db\Postgresql\Container;
 
 use Psr\Container\ContainerInterface;
 use FTC\Discord\Db\Postgresql\GuildRepository as GuildRepositoryImp;

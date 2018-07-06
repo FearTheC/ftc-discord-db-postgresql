@@ -3,8 +3,8 @@
 namespace FTC\Discord\Db\Postgresql;
 
 
-use FTC\Discord\Model\GuildRepository as RepositoryInterface;
-use FTC\Discord\Model\Guild;
+use FTC\Discord\Model\Aggregate\GuildRepository as RepositoryInterface;
+use FTC\Discord\Model\Aggregate\Guild;
 use FTC\Discord\Model\GuildMember;
 use FTC\Discord\Model\GuildRole;
 use FTC\Discord\Model\ValueObject\Snowflake\UserId;

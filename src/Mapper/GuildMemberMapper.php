@@ -2,6 +2,8 @@
 
 namespace FTC\Discord\Db\Postgresql\Mapper;
 
+use FTC\Discord\Model\Aggregate\GuildMember;
+
 class GuildMemberMapper
 {
     

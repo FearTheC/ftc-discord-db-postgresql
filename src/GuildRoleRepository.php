@@ -2,8 +2,12 @@
 namespace FTC\Discord\Db\Postgresql;
 
 
-use FTC\Discord\Model\GuildRoleRepository as RepositoryInterface;
-use FTC\Discord\Model\GuildRole;
+use FTC\Discord\Model\Aggregate\GuildRoleRepository as RepositoryInterface;
+use FTC\Discord\Model\Aggregate\GuildRole;
+use FTC\Discord\Model\ValueObject\Snowflake\RoleId;
+use FTC\Discord\Model\ValueObject\Snowflake\GuildId;
+use FTC\Discord\Model\ValueObject\Name\RoleName;
+use FTC\Discord\Model\Collection\GuildRoleIdCollection;
 
 class GuildRoleRepository extends PostgresqlRepository implements RepositoryInterface
 {
@@ -20,17 +24,17 @@ class GuildRoleRepository extends PostgresqlRepository implements RepositoryInte
         
     }
     
-    public function getAll() : array
+    public function getAll() : GuildRoleIdCollection
     {
         
     }
     
-    public function findById(int $id) : GuildRole
+    public function findById(RoleId $id) : GuildRole
     {
         
     }
     
-    public function findByName(string $name, int $guildId) : ?GuildRole
+    public function findByName(RoleName $name, GuildId $guildId) : ?GuildRole
     {
         $q = $this->persistence->prepare(self::GET_BY_NAME);
         $q->bindParam('guild_id', $guildId, \PDO::PARAM_INT);

@@ -42,6 +42,19 @@ EOT;
      */
     private $members;
     
+    public function getGuildMember(GuildId $guildId, UserId $memberId) : ?GuildMember
+    {
+        $stmt = $this->persistence->prepare(self::SELECT_GUILD_MEMBER);
+        $stmt->bindValue('member_id', (string) $memberId, \PDO::PARAM_INT);
+        $stmt->bindValue('guild_id', (string) $guildId, \PDO::PARAM_INT);
+        $stmt->execute();
+        
+        $userArray = $stmt->fetch(\PDO::FETCH_ASSOC);
+        
+        
+        return GuildMemberMapper::create($userArray);
+    }
+    
     public function add(GuildMember $member)
     {
         $id = $member->getId();

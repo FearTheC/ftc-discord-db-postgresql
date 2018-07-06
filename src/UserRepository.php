@@ -2,9 +2,10 @@
 
 namespace FTC\Discord\Db\Postgresql;
 
-use FTC\Discord\Model\UserRepository as RepositoryInterface;
-use FTC\Discord\Model\User;
+use FTC\Discord\Model\Aggregate\UserRepository as RepositoryInterface;
+use FTC\Discord\Model\Aggregate\User;
 use FTC\Discord\Model\ValueObject\Snowflake;
+use FTC\Discord\Model\ValueObject\Snowflake\UserId;
 
 class UserRepository extends PostgresqlRepository implements RepositoryInterface
 {
@@ -44,7 +45,7 @@ EOT;
         
     }
     
-    public function findById(Snowflake $id) : ?User
+    public function findById(UserId $id) : ?User
     {
         $stmt = $this->persistence->prepare(self::SELECT_USER);
         $stmt->bindValue('id', $id->get(), \PDO::PARAM_INT);
