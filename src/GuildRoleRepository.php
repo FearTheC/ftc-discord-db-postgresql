@@ -20,6 +20,8 @@ INSERT INTO guilds_roles VALUES (:id, :guild_id, :name, :color, :position, :perm
 ON CONFLICT (id) DO UPDATE SET name = :name, color=:color, position=:position, permissions=:permissions, is_hoisted=:hoist, is_mentionable=:mentionable
 EOT;
 
+    const SELECT_GUILD_ROLES = "SELECT name FROM guilds_roles where guild_id = :guild_id and name <> '@everyone'";
+    
     /**
      * @var GuildRole[]
      */
@@ -52,15 +54,25 @@ EOT;
     
     public function findByName(RoleName $name, GuildId $guildId) : ?GuildRole
     {
-        $q = $this->persistence->prepare(self::GET_BY_NAME);
-        $q->bindParam('guild_id', $guildId, \PDO::PARAM_INT);
-        $q->bindValue('name', $name, \PDO::PARAM_STR);
-        $q->execute();
-        $data = $q->fetch(\PDO::FETCH_ASSOC);
+        $stmt= $this->persistence->prepare(self::GET_BY_NAME);
+        $stmt->bindParam('guild_id', $guildId, \PDO::PARAM_INT);
+        $stmt->bindValue('name', $name, \PDO::PARAM_STR);
+        $stmt->execute();
+        $data = $stmt->fetch(\PDO::FETCH_ASSOC);
 
         if ($data == null) return null;
         
         return GuildRole::fromDbRow($data);
+    }
+    
+    public function getAvailableRoles(GuildId $guildId)
+    {
+        $stmt= $this->persistence->prepare(self::SELECT_GUILD_ROLES);
+        $stmt->bindParam(':guild_id', $guildId, \PDO::PARAM_STR);
+        $stmt->execute();
+        
+        $results = $stmt->fetchAll(\PDO::FETCH_COLUMN);
+        
     }
     
 }

@@ -32,8 +32,8 @@ WHERE id = :id;
 EOT;
 
     const SELECT_GUILD_MEMBER = <<<'EOT'
-SELECT guilds_users.user_id as id, guilds_users.nickname, guilds_users.joined_date, json_agg(users_roles.role_id) AS roles_ids FROM guilds_users
-JOIN users_roles ON users_roles.user_id = guilds_users.user_id
+SELECT guilds_users.user_id as id, guilds_users.nickname, guilds_users.joined_date, json_agg(members_roles.role_id) AS roles_ids FROM guilds_users
+JOIN members_roles ON members_roles.user_id = guilds_users.user_id
 where guilds_users.guild_id = :guild_id AND guilds_users.user_id = :member_id
 GROUP BY guilds_users.user_id, guilds_users.nickname, guilds_users.joined_date
 EOT;

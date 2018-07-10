@@ -5,7 +5,6 @@ namespace FTC\Discord\Db\Postgresql;
 
 use FTC\Discord\Model\Aggregate\GuildMemberRepository as RepositoryInterface;
 use FTC\Discord\Model\Aggregate\GuildMember;
-use FTC\Discord\Model\Aggregate\GuildRole;
 use FTC\Discord\Model\Collection\GuildMemberCollection;
 use FTC\Discord\Model\ValueObject\Snowflake\UserId;
 use FTC\Discord\Model\ValueObject\Snowflake\GuildId;
@@ -17,6 +16,14 @@ class GuildMemberRepository extends PostgresqlRepository implements RepositoryIn
     const INSERT_GUILD_MEMBER = "INSERT INTO guilds_users VALUES (:guild_id, :user_id, :nickname, :joined_date)";
     
     const ADD_MEMBER_ROLE = "INSERT INTO members_roles VALUES (:user_id, :role_id)";
+    
+    const SELECT_COUNT_BY_ROLE = <<<'EOT'
+SELECT DISTINCT r.name, count(members.user_id) FROM guilds_users members
+JOIN members_roles roles on roles.user_id = members.user_id
+JOIN guilds_roles r ON r.id = roles.role_id AND r.guild_id = :guild_id AND r.name IN (%s)
+GROUP BY (r.name)
+EOT;
+    
     
     /**
      * @var GuildMember[]
@@ -77,6 +84,17 @@ class GuildMemberRepository extends PostgresqlRepository implements RepositoryIn
         $coll = $this->fromArray($array, $coll);
         
         return $coll;
+    }
+    
+    public function countByRole(GuildId $guildId, $roleNames)
+    {
+        $query = sprintf(self::SELECT_COUNT_BY_ROLE, implode(', ', $roleNames));
+        $stmt = $this->persistence->prepare($query);
+        $stmt->bindParam(':guild_id', $guildId, \PDO::PARAM_STR);
+        $stmt->execute();
+        $results = $stmt->fetchAll(\PDO::FETCH_NAMED);
+        
+        return $results;
     }
     
     private function fromArray($array)
