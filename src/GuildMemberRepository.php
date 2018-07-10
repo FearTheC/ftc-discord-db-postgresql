@@ -3,39 +3,20 @@ declare(strict_types=1);
 
 namespace FTC\Discord\Db\Postgresql;
 
-use FTC\Discord\Model\GuildMemberRepository as RepositoryInterface;
-use FTC\Discord\Model\GuildMember;
-use FTC\Discord\Model\GuildRole;
+use FTC\Discord\Model\Aggregate\GuildMemberRepository as RepositoryInterface;
+use FTC\Discord\Model\Aggregate\GuildMember;
+use FTC\Discord\Model\Aggregate\GuildRole;
 use FTC\Discord\Model\Collection\GuildMemberCollection;
 use FTC\Discord\Model\ValueObject\Snowflake\UserId;
-use FTC\Discord\Model\ValueObject\Snowflake\RoleId;
 use FTC\Discord\Model\ValueObject\Snowflake\GuildId;
+use FTC\Discord\Model\ValueObject\Snowflake\RoleId;
 
 class GuildMemberRepository extends PostgresqlRepository implements RepositoryInterface
 {
     
-    const GET_ALL_QUERY = <<<'EOT'
-SELECT users.id, users.username, JSONB_AGG(guilds_roles) as roles
-FROM users
-JOIN users_roles ON users_roles.user_id = users.id
-JOIN guilds_roles on guilds_roles.id = users_roles.role_id
-GROUP BY users.id, users.username
-EOT;
+    const INSERT_GUILD_MEMBER = "INSERT INTO guilds_users VALUES (:guild_id, :user_id, :nickname, :joined_date)";
     
-    const ADD_USER_Q = "INSERT INTO users VALUES (:user_id, :username) ON CONFLICT ON CONSTRAINT users_pkey DO NOTHING";
-    
-    const ADD_GUILD_USER_Q = "INSERT INTO guilds_users VALUES (:guild_id, :user_id)";
-    
-    const ADD_USER_ROLE = "INSERT INTO users_roles VALUES (:user_id, role)";
-    
-    const USER_QUERY = <<<'EOT'
-select users.id, users.username, jsonb_agg(guilds_roles) as roles
-from users
-join users_roles on users_roles.user_id = users.id
-join guilds_roles on guilds_roles.id = users_roles.role_id AND guilds_roles.guild_id = :guild_id
-WHERE users.id = :user_id
-group by users.id, users.username
-EOT;
+    const ADD_MEMBER_ROLE = "INSERT INTO members_roles VALUES (:user_id, :role_id)";
     
     /**
      * @var GuildMember[]
@@ -55,31 +36,32 @@ EOT;
         return GuildMemberMapper::create($userArray);
     }
     
-    public function add(GuildMember $member)
+    public function save(GuildMember $member, GuildId $guildId)
     {
-        $id = $member->getId();
-        $username = $member->getUsername();
+        $this->persistence->beginTransaction();
         
-        $q = $this->persistence->prepare(self::ADD_USER_Q);
-        $q->bindValue('user_id', $member->getId(), \PDO::PARAM_INT);
-        $q->bindValue('username', $member->getUsername(), \PDO::PARAM_STR);
-        $q->execute();
+        $stmt = $this->persistence->prepare(self::INSERT_GUILD_MEMBER);
+        $stmt->bindValue('guild_id', $guildId->get(), \PDO::PARAM_INT);
+        $stmt->bindValue('user_id', $member->getId(), \PDO::PARAM_INT);
+        $stmt->bindValue('nickname', $member->getNickname(), \PDO::PARAM_STR);
+        $stmt->bindValue('joined_date', $member->getJoinDate()->format('Y-m-d H:i'), \PDO::PARAM_STR);
+        $stmt->execute();
+        
+        array_map(
+            [$this, 'addRole'],
+            $member->getRoles()->getIterator(),
+            array_fill(0, $member->getRoles()->count(), $member)
+            );
+        
+        $this->persistence->commit();    
     }
     
-    public function addGuild(GuildMember $member, int $guildId)
+    public function addRole(RoleId $roleId, GuildMember $member)
     {
-        $q = $this->persistence->prepare(self::ADD_GUILD_USER_Q);
-        $q->bindParam('guild_id', $guildId, \PDO::PARAM_INT);
-        $q->bindValue('user_id', $member->getId(), \PDO::PARAM_INT);
-        $q->execute();
-    }
-    
-    public function addRole(GuildMember $memberId, GuildRole $roleName)
-    {
-        $q = $this->persistence->prepare(self::ADD_USER_ROLE);
-        $q->bindValue('user_id', $member->getId(), \PDO::PARAM_INT);
-        $q->bindParam('role_id', $role->getId(), \PDO::PARAM_INT);
-        $q->execute();
+        $stmt = $this->persistence->prepare(self::ADD_MEMBER_ROLE);
+        $stmt->bindValue('user_id', $member->getId(), \PDO::PARAM_INT);
+        $stmt->bindValue('role_id', $roleId->get(), \PDO::PARAM_INT);
+        $stmt->execute();
     }
     
     public function remove(GuildMember $member)

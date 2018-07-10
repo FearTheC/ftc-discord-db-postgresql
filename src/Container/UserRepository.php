@@ -1,6 +1,6 @@
 <?php declare(strict_types=1);
 
-namespace FTC\Discord\Db\Postgresql\Factory;
+namespace FTC\Discord\Db\Postgresql\Container;
 
 use Psr\Container\ContainerInterface;
 use FTC\Discord\Db\Postgresql\UserRepository as UserRepositoryImp;
