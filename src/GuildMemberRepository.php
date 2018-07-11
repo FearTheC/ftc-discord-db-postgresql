@@ -9,6 +9,7 @@ use FTC\Discord\Model\Collection\GuildMemberCollection;
 use FTC\Discord\Model\ValueObject\Snowflake\UserId;
 use FTC\Discord\Model\ValueObject\Snowflake\GuildId;
 use FTC\Discord\Model\ValueObject\Snowflake\RoleId;
+use FTC\Discord\Db\Postgresql\Mapper\GuildMemberMapper;
 
 class GuildMemberRepository extends PostgresqlRepository implements RepositoryInterface
 {
@@ -17,6 +18,20 @@ class GuildMemberRepository extends PostgresqlRepository implements RepositoryIn
     
     const ADD_MEMBER_ROLE = "INSERT INTO members_roles VALUES (:user_id, :role_id)";
     
+    const SELECT_GUILD_MEMBER = <<<'EOT'
+SELECT members.id, members.roles, members.joined_date
+FROM view_guilds_members members
+WHERE members.guild_id = :guild_id
+EOT;
+    
+//     const SELECT_GUILD_MEMBER = <<<'EOT'
+// SELECT members.id, members.roles, members.joined_date
+// , jsonb_agg(x.roles->>'id') as roles_ids
+// FROM view_guilds_members members, LATERAL (SELECT jsonb_array_elements(members.roles) as roles) x
+// WHERE members.guild_id = :guild_id
+// GROUP BY members.id, members.roles, members.joined_date;
+// EOT;
+
     const SELECT_COUNT_BY_ROLE = <<<'EOT'
 SELECT DISTINCT r.name, count(members.user_id) FROM guilds_users members
 JOIN members_roles roles on roles.user_id = members.user_id
@@ -60,7 +75,7 @@ EOT;
             array_fill(0, $member->getRoles()->count(), $member)
             );
         
-        $this->persistence->commit();    
+        $this->persistence->commit();
     }
     
     public function addRole(RoleId $roleId, GuildMember $member)
@@ -76,11 +91,20 @@ EOT;
         
     }
     
-    public function getAll() : GuildMemberCollection
+    const SELECT_ALL = <<<'EOT'
+SELECT  members.roles->'id' FROM view_guilds_members members
+WHERE guild_id = :guild_id
+EOT;
+    
+    public function getAll(GuildId $guildId) : GuildMemberCollection
     {
-        $stmt = $this->persistence->prepare(self::GET_ALL_QUERY);
+        $stmt = $this->persistence->prepare(self::SELECT_GUILD_MEMBER);
+        $stmt->bindValue(':guild_id', $guildId->get(), \PDO::PARAM_INT);
         $stmt->execute();
-        $array =  $stmt->fetchAll(\PDO::FETCH_ASSOC);   
+        
+        $array =  $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        $array = array_map([GuildMemberMapper::class, 'create'], $array);
+        $guildMembers = new GuildMemberCollection(...$array);
         $coll = $this->fromArray($array, $coll);
         
         return $coll;
@@ -101,13 +125,13 @@ EOT;
     {
         $array = array_map([GuildMember::class, 'fromDb'], $array);
         return new GuildMemberCollection(...$array);
-
+        
         return $collee;
     }
     
     public function findById(UserId $id) : GuildMember
     {
     }
-
+    
     
 }
