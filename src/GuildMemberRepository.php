@@ -13,7 +13,7 @@ use FTC\Discord\Model\ValueObject\Snowflake\RoleId;
 class GuildMemberRepository extends PostgresqlRepository implements RepositoryInterface
 {
     
-    const INSERT_GUILD_MEMBER = "INSERT INTO guilds_users VALUES (:guild_id, :user_id, :nickname, :joined_date)";
+    const INSERT_GUILD_MEMBER = "INSERT INTO guilds_users  (guild_id, user_id, nickname, joined_date) VALUES (:guild_id, :user_id, :nickname, :joined_date)";
     
     const ADD_MEMBER_ROLE = "INSERT INTO members_roles VALUES (:user_id, :role_id)";
     
