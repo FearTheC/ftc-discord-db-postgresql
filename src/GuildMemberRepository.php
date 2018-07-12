@@ -20,7 +20,7 @@ VALUES (:guild_id, :user_id, :nickname, :joined_date)
 ON CONFLICT (guild_id, user_id) DO UPDATE SET nickname = :nickname
 EOT;
     
-    const ADD_MEMBER_ROLE = "INSERT INTO members_roles VALUES (:user_id, :role_id)";
+    const ADD_MEMBER_ROLE = "INSERT INTO members_roles VALUES (:user_id, :role_id) ON CONFLICT DO NOTHING";
     
     const SELECT_GUILD_MEMBER = <<<'EOT'
 SELECT members.id, members.roles, members.joined_date, members.nickname
