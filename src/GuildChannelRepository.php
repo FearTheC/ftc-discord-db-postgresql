@@ -6,6 +6,7 @@ namespace FTC\Discord\Db\Postgresql;
 use FTC\Discord\Model\Aggregate\GuildChannelRepository as RepositoryInterface;
 use FTC\Discord\Model\Aggregate\GuildChannel;
 use FTC\Discord\Model\ValueObject\Snowflake\ChannelId;
+use FTC\Discord\Model\ValueObject\Snowflake\GuildId;
 
 class GuildChannelRepository extends PostgresqlRepository implements RepositoryInterface
 {
@@ -14,7 +15,7 @@ class GuildChannelRepository extends PostgresqlRepository implements RepositoryI
 SELECT * FROM guilds_channel
 WHERE id = :id
 EOT;
-    
+
     const INSERT_GUILD_CHANNEL = <<<'EOT'
 INSERT INTO guilds_channels VALUES (:id, :guild_id, :name, :position, :type_id, :permission_overwrite, :category_id)
 ON CONFLICT (id) DO UPDATE SET name = :name, position = :position, permission_overwrite = :permission_overwrite, category_id = :category_id;
@@ -36,9 +37,35 @@ EOT;
     private $channels;
     
 
-    public function save(GuildChannel $channel)
+    public function save(GuildChannel $channel, GuildId $guildId)
     {
+        $this->persistence->beginTransaction();
+        $stmt = $this->persistence->prepare(self::INSERT_GUILD_CHANNEL);
+        $stmt->bindValue('id', $channel->getId()->get(), \PDO::PARAM_INT);
+        $stmt->bindValue('guild_id', $guildId->get(), \PDO::PARAM_INT);
+        $stmt->bindValue('name', $channel->getName(), \PDO::PARAM_INT);
+        $stmt->bindValue('type_id', $channel->getTypeId(), \PDO::PARAM_INT);
+        $stmt->bindValue('permission_overwrite', $channel->getPermissionOverwrites()->toJson(), \PDO::PARAM_STR);
+        $stmt->bindValue('position', $channel->getPosition(), \PDO::PARAM_INT);
+        $stmt->bindValue('category_id', (int) (string) $channel->getCategoryId(), \PDO::PARAM_INT);
+        $stmt->execute();
         
+        if ($channel->getTypeId() == 0 && $topic = $channel->getTopic()) {
+            $stmt = $this->persistence->prepare(self::INSERT_TEXT_CHANNEL);
+            $stmt->bindValue('channel_id', (int) (string) $channel->getId(), \PDO::PARAM_INT);
+            $stmt->bindValue('topic', $topic, \PDO::PARAM_STR);
+            $stmt->execute();
+        }
+        
+        if ($channel->getTypeId() == 2) {
+            $stmt = $this->persistence->prepare(self::INSERT_VOICE_CHANNEL);
+            $stmt->bindValue('channel_id', (int) (string) $channel->getId(), \PDO::PARAM_INT);
+            $stmt->bindValue('bitrate', $channel->getBitrate(), \PDO::PARAM_INT);
+            $stmt->bindValue('user_limit', $channel->getUserLimit(), \PDO::PARAM_INT);
+            $stmt->execute();
+        }
+        
+        $this->persistence->commit();
     }
     
     public function findById(ChannelId $id) : ?GuildChannel
