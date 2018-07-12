@@ -17,7 +17,7 @@ class GuildMemberRepository extends PostgresqlRepository implements RepositoryIn
     const INSERT_GUILD_MEMBER = <<<'EOT'
 INSERT INTO guilds_users  (guild_id, user_id, nickname, joined_date)
 VALUES (:guild_id, :user_id, :nickname, :joined_date)
-ON CONFLICT (guild_id, user_id) DO UPDATE (nickname)
+ON CONFLICT (guild_id, user_id) DO UPDATE SET nickname = :nickname
 EOT;
     
     const ADD_MEMBER_ROLE = "INSERT INTO members_roles VALUES (:user_id, :role_id)";
@@ -74,8 +74,8 @@ EOT;
         
         array_map(
             [$this, 'addRole'],
-            $member->getRoles()->getIterator(),
-            array_fill(0, $member->getRoles()->count(), $member)
+            $member->getRolesIds()->getIterator(),
+            array_fill(0, $member->getRolesIds()->count(), $member)
             );
         
         $this->persistence->commit();
