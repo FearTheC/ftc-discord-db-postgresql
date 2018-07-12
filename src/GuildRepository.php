@@ -5,30 +5,21 @@ namespace FTC\Discord\Db\Postgresql;
 
 use FTC\Discord\Model\Aggregate\GuildRepository as RepositoryInterface;
 use FTC\Discord\Model\Aggregate\Guild;
-use FTC\Discord\Model\Aggregate\GuildMember;
-use FTC\Discord\Model\Aggregate\GuildRole;
-use FTC\Discord\Model\Aggregate\GuildChannel;
-use FTC\Discord\Model\ValueObject\Snowflake\UserId;
 use FTC\Discord\Model\ValueObject\Snowflake\GuildId;
-use FTC\Discord\Model\Channel\GuildChannel\TextChannel;
-use FTC\Discord\Model\Channel\GuildChannel\Voice;
-use FTC\Discord\Db\Postgresql\Mapper\GuildMemberMapper;
-use FTC\Discord\Model\ValueObject\Snowflake\RoleId;
+use FTC\Discord\Model\ValueObject\DomainName;
+use FTC\Discord\Db\Postgresql\Mapper\GuildMapper;
 
 class GuildRepository extends PostgresqlRepository implements RepositoryInterface
 {
-    
-    const SD = <<<'EOT'
-CREATE OR REPLACE VIEW guilds_aggregates AS
-SELECT guilds.id, guilds.name, jsonb_agg(guilds_users.id) as members, jsonb_agg(guilds_roles.*) AS roles FROM guilds
-LEFT JOIN guilds_users ON guilds_users.guild_id = guilds.id
-LEFT JOIN guilds_roles ON guilds_roles.guild_id = guilds.id
-GROUP BY guilds.id, guilds.name
-EOT;
 
     const SELECT_GUILD = <<<'EOT'
 SELECT * from guilds_aggregates
 WHERE id = :id;
+EOT;
+
+    const SELECT_GUILD_BY_DOMAIN_NAME = <<<'EOT'
+SELECT id, name, owner_id, domain, members_ids, roles_ids, channels_ids FROM guilds_aggregates
+WHERE domain = :domain_name
 EOT;
 
     const SELECT_GUILD_MEMBER = <<<'EOT'
@@ -69,6 +60,21 @@ EOT;
         
     }
     
+    public function findByDomainName(DomainName $domainName) : ?Guild
+    {
+        $stmt = $this->persistence->prepare(self::SELECT_GUILD_BY_DOMAIN_NAME);
+        $stmt->bindValue('domain_name', (string) $domainName, \PDO::PARAM_STR);
+        $stmt->execute();
+        
+        $data = $stmt->fetch(\PDO::FETCH_ASSOC);
+        
+        if (!$data) {
+            return null;
+        }
+        
+        return GuildMapper::create($data);
+    }
+    
     public function findById(GuildId $id) : ?Guild
     {
 //         $stmt = $this->persistence->prepare(self::SD);
@@ -102,66 +108,7 @@ EOT;
 
 //         return $guild;
     }
-    
-    
-    
-    public function getGuildMember(GuildId $guildId, UserId $memberId) : ?GuildMember
-    {
-        $stmt = $this->persistence->prepare(self::SELECT_GUILD_MEMBER);
-        $stmt->bindValue('member_id', (string) $memberId, \PDO::PARAM_INT);
-        $stmt->bindValue('guild_id', (string) $guildId, \PDO::PARAM_INT);
-        $stmt->execute();
-        
-        $userArray = $stmt->fetch(\PDO::FETCH_ASSOC);
-        
-        
-        return GuildMemberMapper::create($userArray);
-    }
-    
-    private function saveRole(GuildRole $role, GuildId $guildId) : void
-    {
-        $stmt = $this->persistence->prepare(self::INSERT_GUILD_ROLE);
-        $stmt->bindValue('guild_id', $guildId->get(), \PDO::PARAM_INT);
-        $stmt->bindValue('id', $role->getId()->get(), \PDO::PARAM_INT);
-        $stmt->bindValue('name', $role->getName(), \PDO::PARAM_STR);
-        $stmt->bindValue('color', $role->getColor()->getInteger(), \PDO::PARAM_INT);
-        $stmt->bindValue('position', $role->getPosition(), \PDO::PARAM_INT);
-        $stmt->bindValue('permissions', $role->getPermissions(), \PDO::PARAM_INT);
-        $stmt->bindValue('mentionable', $role->isMentionable(), \PDO::PARAM_BOOL);
-        $stmt->bindValue('hoist', $role->isHoisted(), \PDO::PARAM_BOOL);
-        $stmt->execute();
-    }
-    
-    private function saveChannel(GuildChannel $channel, GuildId $guildId)
-    {
-        $channel->getPermissionOverwrites()->toJson();
-        if ($categoryId = $channel->getCategoryId()) {
-            $categoryId = $categoryId->get();
-        }
-        $stmt = $this->persistence->prepare(self::INSERT_GUILD_CHANNEL);
-        $stmt->bindValue('guild_id', $guildId->get(), \PDO::PARAM_INT);
-        $stmt->bindValue('id', $channel->getId()->get(), \PDO::PARAM_INT);
-        $stmt->bindValue('name', $channel->getName(), \PDO::PARAM_STR);
-        $stmt->bindValue('position', $channel->getPosition(), \PDO::PARAM_INT);
-        $stmt->bindValue('type_id', $channel->getTypeId(), \PDO::PARAM_INT);
-        $stmt->bindValue('permission_overwrite', $channel->getPermissionOverwrites()->toJson(), \PDO::PARAM_INT);
-        $stmt->bindValue('category_id', $categoryId, \PDO::PARAM_INT);
-        $stmt->execute();
-        
-        if ($channel instanceof TextChannel && $topic = $channel->getTopic()) {
-            $stmt = $this->persistence->prepare(self::INSERT_TEXT_CHANNEL);
-            $stmt->bindValue('channel_id', $channel->getId()->get(), \PDO::PARAM_INT);
-            $stmt->bindValue('topic', (string) $topic, \PDO::PARAM_STR);
-            $stmt->execute();
-        }
-        
-        if ($channel instanceof Voice) {
-            $stmt = $this->persistence->prepare(self::INSERT_VOICE_CHANNEL);
-            $stmt->bindValue('channel_id', $channel->getId()->get(), \PDO::PARAM_INT);
-            $stmt->bindValue('bitrate', $channel->getBitrate(), \PDO::PARAM_INT);
-            $stmt->bindValue('user_limit', $channel->getUserLimit(), \PDO::PARAM_INT);
-            $stmt->execute();
-        }
-    }
+
+
 
 }

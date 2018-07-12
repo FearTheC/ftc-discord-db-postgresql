@@ -14,12 +14,22 @@ use FTC\Discord\Db\Postgresql\Mapper\GuildMemberMapper;
 class GuildMemberRepository extends PostgresqlRepository implements RepositoryInterface
 {
     
-    const INSERT_GUILD_MEMBER = "INSERT INTO guilds_users  (guild_id, user_id, nickname, joined_date) VALUES (:guild_id, :user_id, :nickname, :joined_date)";
+    const INSERT_GUILD_MEMBER = <<<'EOT'
+INSERT INTO guilds_users  (guild_id, user_id, nickname, joined_date)
+VALUES (:guild_id, :user_id, :nickname, :joined_date)
+ON CONFLICT (guild_id, user_id) DO UPDATE (nickname)
+EOT;
     
     const ADD_MEMBER_ROLE = "INSERT INTO members_roles VALUES (:user_id, :role_id)";
     
     const SELECT_GUILD_MEMBER = <<<'EOT'
-SELECT members.id, members.roles, members.joined_date
+SELECT members.id, members.roles, members.joined_date, members.nickname
+FROM view_guilds_members members
+WHERE members.id = :member_id
+EOT;
+    
+    const SELECT_ALL_GUILD_MEMBER = <<<'EOT'
+SELECT members.id, members.roles, members.joined_date, members.nickname
 FROM view_guilds_members members
 WHERE members.guild_id = :guild_id
 EOT;
@@ -39,25 +49,18 @@ JOIN guilds_roles r ON r.id = roles.role_id AND r.guild_id = :guild_id AND r.nam
 GROUP BY (r.name)
 EOT;
     
+    const SELECT_ALL = <<<'EOT'
+SELECT  members.roles->'id' FROM view_guilds_members members
+WHERE guild_id = :guild_id
+EOT;
+
+    
     
     /**
      * @var GuildMember[]
      */
     private $members;
-    
-    public function getGuildMember(GuildId $guildId, UserId $memberId) : ?GuildMember
-    {
-        $stmt = $this->persistence->prepare(self::SELECT_GUILD_MEMBER);
-        $stmt->bindValue('member_id', (string) $memberId, \PDO::PARAM_INT);
-        $stmt->bindValue('guild_id', (string) $guildId, \PDO::PARAM_INT);
-        $stmt->execute();
-        
-        $userArray = $stmt->fetch(\PDO::FETCH_ASSOC);
-        
-        
-        return GuildMemberMapper::create($userArray);
-    }
-    
+
     public function save(GuildMember $member, GuildId $guildId)
     {
         $this->persistence->beginTransaction();
@@ -91,23 +94,29 @@ EOT;
         
     }
     
-    const SELECT_ALL = <<<'EOT'
-SELECT  members.roles->'id' FROM view_guilds_members members
-WHERE guild_id = :guild_id
-EOT;
+    public function getById(UserId $memberId) : ?GuildMember
+    {
+        $stmt = $this->persistence->prepare(self::SELECT_GUILD_MEMBER);
+        $stmt->bindValue('member_id', (string) $memberId, \PDO::PARAM_INT);
+        $stmt->execute();
+        
+        $userArray = $stmt->fetch(\PDO::FETCH_ASSOC);
+        
+        
+        return GuildMemberMapper::create($userArray);
+    }
     
     public function getAll(GuildId $guildId) : GuildMemberCollection
     {
-        $stmt = $this->persistence->prepare(self::SELECT_GUILD_MEMBER);
+        $stmt = $this->persistence->prepare(self::SELECT_ALL_GUILD_MEMBER);
         $stmt->bindValue(':guild_id', $guildId->get(), \PDO::PARAM_INT);
         $stmt->execute();
         
         $array =  $stmt->fetchAll(\PDO::FETCH_ASSOC);
         $array = array_map([GuildMemberMapper::class, 'create'], $array);
         $guildMembers = new GuildMemberCollection(...$array);
-        $coll = $this->fromArray($array, $coll);
         
-        return $coll;
+        return $guildMembers;
     }
     
     public function countByRole(GuildId $guildId, $roleNames)

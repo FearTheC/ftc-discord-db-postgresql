@@ -8,6 +8,7 @@ use FTC\Discord\Model\ValueObject\Snowflake\RoleId;
 use FTC\Discord\Model\ValueObject\Snowflake\GuildId;
 use FTC\Discord\Model\ValueObject\Name\RoleName;
 use FTC\Discord\Model\Collection\GuildRoleCollection;
+use FTC\Discord\Db\Postgresql\Mapper\GuildRoleMapper;
 
 class GuildRoleRepository extends PostgresqlRepository implements RepositoryInterface
 {
@@ -20,7 +21,7 @@ INSERT INTO guilds_roles VALUES (:id, :guild_id, :name, :color, :position, :perm
 ON CONFLICT (id) DO UPDATE SET name = :name, color=:color, position=:position, permissions=:permissions, is_hoisted=:hoist, is_mentionable=:mentionable
 EOT;
 
-    const SELECT_GUILD_ROLES = "SELECT name FROM guilds_roles where guild_id = :guild_id and name <> '@everyone'";
+    const SELECT_GUILD_ROLES = "SELECT id, name, color, permissions, position, is_mentionable, is_hoisted FROM guilds_roles where guild_id = :guild_id and name <> '@everyone'";
     
     /**
      * @var GuildRole[]
@@ -42,9 +43,17 @@ EOT;
         
     }
     
-    public function getAll() : GuildRoleCollection
+    public function getAll(GuildId $guildId) : GuildRoleCollection
     {
+        $stmt = $this->persistence->prepare(self::SELECT_GUILD_ROLES);
+        $stmt->bindValue('guild_id', $guildId->get(), \PDO::PARAM_INT);
+        $stmt->execute();
         
+        $array =  $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        $array = array_map([GuildRoleMapper::class, 'create'], $array);
+        $guildRoles = new GuildRoleCollection(...$array);
+        
+        return $guildRoles;        
     }
     
     public function findById(RoleId $id) : GuildRole
@@ -73,6 +82,23 @@ EOT;
         
         $results = $stmt->fetchAll(\PDO::FETCH_COLUMN);
         
+    }
+    
+    const SELECT_EVERYONE_ROLE = <<<'EOT'
+SELECT id, guild_id, name, color, position, permissions, is_mentionable, is_hoisted
+FROM guilds_roles
+WHERE guild_id = :guild_id and name = '@everyone'
+EOT;
+    
+    public function getEveryoneRole(GuildId $guildId) : GuildRole
+    {
+        $stmt= $this->persistence->prepare(self::SELECT_EVERYONE_ROLE);
+        $stmt->bindParam(':guild_id', $guildId, \PDO::PARAM_STR);
+        $stmt->execute();
+        
+        $data = $stmt->fetch(\PDO::FETCH_ASSOC);
+        
+        return GuildRoleMapper::create($data);
     }
     
 }

@@ -11,20 +11,17 @@ use FTC\Discord\Model\ValueObject\Name\NickName;
 class GuildMemberMapper
 {
     
-    public static function create(array $data) : ?GuildMember
+    public static function create(array $data) : GuildMember
     {
-//         var_dump($data);
-//         var_dump(json_decode($data['roles']));
-//         var_dump(json_decode($data['roles'], true));
-        
         if ($data['roles']) {
-            $rolesIds = array_map(function($value) { return $value['id']; }, json_decode($data['roles'], true));
+            $data['roles_ids'] = array_map(function($value) { return $value['id']; }, json_decode($data['roles'], true));
+        } else {
+            $data['roles_ids'] = json_decode($data['roles_ids'], true);
         }
-        
-        $rolesIds = array_map([RoleId::class, 'create'], $rolesIds);
-        var_dump($data);
+        $rolesIds = array_map([RoleId::class, 'create'], $data['roles_ids']);
 
         $rolesIdsColl = new GuildRoleIdCollection(...$rolesIds);
+
         return GuildMember::create(
             UserId::create($data['id']),
             $rolesIdsColl,
