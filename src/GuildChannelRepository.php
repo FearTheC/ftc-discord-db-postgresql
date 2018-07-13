@@ -1,5 +1,4 @@
-<?php
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace FTC\Discord\Db\Postgresql;
 
@@ -7,9 +6,22 @@ use FTC\Discord\Model\Aggregate\GuildChannelRepository as RepositoryInterface;
 use FTC\Discord\Model\Aggregate\GuildChannel;
 use FTC\Discord\Model\ValueObject\Snowflake\ChannelId;
 use FTC\Discord\Model\ValueObject\Snowflake\GuildId;
+use FTC\Discord\Model\Collection\GuildChannelCollection;
+use FTC\Discord\Db\Postgresql\Mapper\GuildChannelMapper;
 
 class GuildChannelRepository extends PostgresqlRepository implements RepositoryInterface
 {
+    
+    const SELECT_ALL = <<<'EOT'
+SELECT id, name, position, type_id, category_id, permission_overwrite,
+COALESCE(text_channels.topic, NULL) as topic,
+COALESCE(voice_channels.bitrate, NULL) as bitrate,
+COALESCE(voice_channels.user_limit, NULL) as user_limit
+FROM guilds_channels
+LEFT JOIN guilds_text_channels text_channels ON type_id = 0 AND text_channels.channel_id = id
+LEFT JOIN guilds_voice_channels voice_channels ON type_id = 2 AND voice_channels.channel_id = id
+WHERE guild_id = :guild_id
+EOT;
     
     const GET_BY_ID = <<<'EOT'
 SELECT * FROM guilds_channel
@@ -75,6 +87,18 @@ EOT;
         $stmt->execute();
         
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    }
+    
+    public function getAll(GuildId $guildId) : GuildChannelCollection
+    {
+        $stmt = $this->persistence->prepare(self::SELECT_ALL);
+        $stmt->bindValue('guild_id', (int) (string) $guildId, \PDO::PARAM_INT);
+        $stmt->execute();
+        
+        $data = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+
+        $channels = array_map([GuildChannelMapper::class, 'create'], $data);
+        return new GuildChannelCollection(...$channels);
     }
     
 }
