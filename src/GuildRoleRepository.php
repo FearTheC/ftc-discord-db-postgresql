@@ -9,6 +9,7 @@ use FTC\Discord\Model\ValueObject\Snowflake\GuildId;
 use FTC\Discord\Model\ValueObject\Name\RoleName;
 use FTC\Discord\Model\Collection\GuildRoleCollection;
 use FTC\Discord\Db\Postgresql\Mapper\GuildRoleMapper;
+use FTC\Discord\Model\ValueObject\Permission;
 
 class GuildRoleRepository extends PostgresqlRepository implements RepositoryInterface
 {
@@ -21,7 +22,23 @@ INSERT INTO guilds_roles VALUES (:id, :guild_id, :name, :color, :position, :perm
 ON CONFLICT (id) DO UPDATE SET name = :name, color=:color, position=:position, permissions=:permissions, is_hoisted=:hoist, is_mentionable=:mentionable
 EOT;
 
-    const SELECT_GUILD_ROLES = "SELECT id, name, color, permissions, position, is_mentionable, is_hoisted FROM guilds_roles where guild_id = :guild_id and name <> '@everyone'";
+    const SELECT_GUILD_ROLES = <<<'EOT'
+SELECT id, name, color, permissions, position, is_mentionable, is_hoisted
+FROM guilds_roles 
+WHERE guild_id = :guild_id
+EOT;
+
+    const SELECT_BY_PERMISSION = <<<'EOT'
+SELECT id, name, color, permissions, position, is_mentionable, is_hoisted
+FROM guilds_roles 
+WHERE guild_id = :guild_id and permissions & :permission > 0
+EOT;
+    
+    const SELECT_EVERYONE_ROLE = <<<'EOT'
+SELECT id, guild_id, name, color, position, permissions, is_mentionable, is_hoisted
+FROM guilds_roles
+WHERE guild_id = :guild_id and name = '@everyone'
+EOT;
     
     /**
      * @var GuildRole[]
@@ -74,6 +91,20 @@ EOT;
         return GuildRole::fromDbRow($data);
     }
     
+    public function findByPermission(GuildId $guildId, Permission $permission) : GuildRoleCollection
+    {
+        $stmt = $this->persistence->prepare(self::SELECT_BY_PERMISSION);
+        $stmt->bindValue('guild_id', $guildId->get(), \PDO::PARAM_INT);
+        $stmt->bindValue('permission', (int) (string) $permission, \PDO::PARAM_INT);
+        $stmt->execute();
+        
+        $array =  $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        $array = array_map([GuildRoleMapper::class, 'create'], $array);
+        $guildRoles = new GuildRoleCollection(...$array);
+        
+        return $guildRoles;
+    }
+    
     public function getAvailableRoles(GuildId $guildId)
     {
         $stmt= $this->persistence->prepare(self::SELECT_GUILD_ROLES);
@@ -81,14 +112,7 @@ EOT;
         $stmt->execute();
         
         $results = $stmt->fetchAll(\PDO::FETCH_COLUMN);
-        
     }
-    
-    const SELECT_EVERYONE_ROLE = <<<'EOT'
-SELECT id, guild_id, name, color, position, permissions, is_mentionable, is_hoisted
-FROM guilds_roles
-WHERE guild_id = :guild_id and name = '@everyone'
-EOT;
     
     public function getEveryoneRole(GuildId $guildId) : GuildRole
     {

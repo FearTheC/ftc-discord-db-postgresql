@@ -23,21 +23,13 @@ EOT;
     
     public function save(User $user)
     {
-        $this->saveUser($user);
-        
-//         $this->persistence->beginTransaction();
-//         $this->saveGuild($guild);
-//         array_map(
-//             [$this, 'saveMember'],
-//             $guild->getMembers()->toArray(),
-//             array_fill(0, $guild->getMembers()->count(), $guild->getId())
-//             );
-//         array_map(
-//             [$this, 'saveRole'],
-//             $guild->getRoles()->toArray(),
-//             array_fill(0, $guild->getRoles()->count(), $guild->getId())
-//             );
-//         $this->persistence->commit();
+        $stmt = $this->persistence->prepare(self::INSERT_USER);
+        $stmt->bindValue('id', $user->getId()->get(), \PDO::PARAM_INT);
+        $stmt->bindValue('username', $user->getUsername(), \PDO::PARAM_STR);
+        $stmt->bindValue('tag', $user->getTag(), \PDO::PARAM_STR);
+        $stmt->bindValue('email', $user->getEmail(), \PDO::PARAM_STR);
+        $stmt->bindValue('is_bot', $user->isBot(), \PDO::PARAM_BOOL);
+        $stmt->execute();
     }
     
     public function getAll() : array
@@ -59,46 +51,6 @@ EOT;
         $user = User::create($userId, $data['username'], $userTag, $userEmail);
         
         return $user;
-        
-        
-//         $stmt = $this->persistence->prepare(self::SELECT_GUILD);
-//         $stmt->bindValue('id', $id->get(), \PDO::PARAM_INT);
-//         $stmt->execute();
-//         $row = $stmt->fetch(\PDO::FETCH_ASSOC);
-        
-//         $guildId = Snowflake::create($row['id']);
-        
-        
-//         $members = new GuildMemberCollection();
-//         $roles = new GuildRoleCollection();
-        
-//         foreach (json_decode($row['roles'], true) as $role) {
-//             $roles->add(GuildRole::create(Snowflake::create($role['id']), $role['name']));
-//         }
-        
-//         foreach (json_decode($row['members'], true) as $member) {
-//             $members->add(GuildMember::create($guildId, User::create(Snowflake::create($member['user_id']), 'nickname'), $roles));
-//         }
-        
-//         $guild = Guild::create(
-//             $guildId,
-//             $row['name'],
-//             Snowflake::create(272341331328761888),
-//             $roles,
-//             $members);
-        
-//         return $guild;
-    }
-    
-    private function saveUser(User $user) : void
-    {
-        $stmt = $this->persistence->prepare(self::INSERT_USER);
-        $stmt->bindValue('id', $user->getId()->get(), \PDO::PARAM_INT);
-        $stmt->bindValue('username', $user->getUsername(), \PDO::PARAM_STR);
-        $stmt->bindValue('tag', $user->getTag(), \PDO::PARAM_STR);
-        $stmt->bindValue('email', $user->getEmail(), \PDO::PARAM_STR);
-        $stmt->bindValue('is_bot', $user->isBot(), \PDO::PARAM_BOOL);
-        $stmt->execute();
     }
     
 }
