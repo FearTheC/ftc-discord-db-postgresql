@@ -8,6 +8,7 @@ use FTC\Discord\Model\Aggregate\Guild;
 use FTC\Discord\Model\ValueObject\Snowflake\GuildId;
 use FTC\Discord\Model\ValueObject\DomainName;
 use FTC\Discord\Db\Postgresql\Mapper\GuildMapper;
+use FTC\Discord\Model\Collection\GuildCollection;
 
 class GuildRepository extends PostgresqlRepository implements RepositoryInterface
 {
@@ -20,6 +21,11 @@ EOT;
     const SELECT_GUILD_BY_DOMAIN_NAME = <<<'EOT'
 SELECT id, name, owner_id, domain, members_ids, roles_ids, channels_ids FROM guilds_aggregates
 WHERE domain = :domain_name
+EOT;
+
+    const SELECT_ALL_GUILDS = <<<'EOT'
+SELECT * 
+FROM guilds_aggregates guilds
 EOT;
 
     const SELECT_GUILD_MEMBER = <<<'EOT'
@@ -55,9 +61,16 @@ EOT;
         $stmt->execute();
     }
     
-    public function getAll() : array
+    public function getAll() : GuildCollection
     {
+        $stmt = $this->persistence->prepare(self::SELECT_ALL_GUILDS);
+        $stmt->execute();
         
+        $array =  $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        $array = array_map([GuildMapper::class, 'create'], $array);
+        $guilds = new GuildCollection(...$array);
+        
+        return $guilds;
     }
     
     public function findByDomainName(DomainName $domainName) : ?Guild
