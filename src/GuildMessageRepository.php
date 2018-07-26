@@ -14,6 +14,7 @@ use FTC\Discord\Model\Aggregate\GuildMessage;
 use FTC\Discord\Model\ValueObject\Snowflake\MessageId;
 use FTC\Discord\Model\Collection\GuildMessageCollection;
 use FTC\Discord\Model\ValueObject\Snowflake\ChannelId;
+use FTC\Discord\Db\Postgresql\Mapper\GuildMessageMapper;
 
 class GuildMessageRepository extends PostgresqlRepository implements RepositoryInterface
 {
@@ -25,6 +26,12 @@ ON CONFLICT (id) DO UPDATE SET content = :content
 EOT;
 
     const SELECT_ALL_GUILD_MESSAGE = <<<'EOT'
+EOT;
+    
+    const SELECT_ALL_CHANNEL_MESSAGES = <<<'EOT'
+SELECT *
+FROM channels_messages
+WHERE channel_id = :channel_id
 EOT;
     
     public function save(GuildMessage $message)
@@ -67,7 +74,15 @@ EOT;
     
     public function getAllForChannel(ChannelId $channelId) : GuildMessageCollection
     {
+        $stmt = $this->persistence->prepare(self::SELECT_ALL_CHANNEL_MESSAGES);
+        $stmt->bindValue('channel_id', (int) (string) $channelId, \PDO::PARAM_INT);
+        $stmt->execute();
         
+        $data = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        
+        $messages = array_map([GuildMessageMapper::class, 'create'], $data);
+        
+        return new GuildMessageCollection(...$messages);
     }
     
     public function findById(MessageId $messageId) : GuildMessage
