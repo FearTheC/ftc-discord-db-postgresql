@@ -3,11 +3,6 @@
 namespace FTC\Discord\Db\Postgresql;
 
 use FTC\Discord\Model\Aggregate\ErrorMessageRepository as RepositoryInterface;
-use FTC\Discord\Model\Aggregate\GuildChannel;
-use FTC\Discord\Model\ValueObject\Snowflake\ChannelId;
-use FTC\Discord\Model\ValueObject\Snowflake\GuildId;
-use FTC\Discord\Model\Collection\GuildChannelCollection;
-use FTC\Discord\Db\Postgresql\Mapper\GuildChannelMapper;
 use FTC\Discord\Model\Aggregate\ErrorMessage;
 use FTC\Discord\Db\Postgresql\Mapper\ErrorMessageMapper;
 use FTC\Discord\Model\Collection\ErrorMessageCollection;
@@ -28,12 +23,12 @@ EOT;
     
     public function save(ErrorMessage $errorMessage)
     {
-        $stmt = $pdo->prepare(INSERT_ERROR);
-        $stmt->bindValue('code', $e->getCode(), \PDO::PARAM_STR);
-        $stmt->bindValue('error_message', $e->getMessage(), \PDO::PARAM_STR);
-        $stmt->bindValue('file', $e->getFile(), \PDO::PARAM_STR);
-        $stmt->bindValue('line', $e->getLine(), \PDO::PARAM_STR);
-        $stmt->bindvalue('message', (string) $message, \PDO::PARAM_STR);
+        $stmt = $this->persistence->prepare(self::INSERT_ERROR);
+        $stmt->bindValue('code', $errorMessage->getCode(), \PDO::PARAM_STR);
+        $stmt->bindValue('error_message', (string) $errorMessage->getMessage(), \PDO::PARAM_STR);
+        $stmt->bindValue('file', (string) $errorMessage->getFile(), \PDO::PARAM_STR);
+        $stmt->bindValue('line', $errorMessage->getLine(), \PDO::PARAM_STR);
+        $stmt->bindvalue('message', (string) $errorMessage->getContext(), \PDO::PARAM_STR);
         $stmt->execute(); 
     }
     
