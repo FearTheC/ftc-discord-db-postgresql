@@ -38,6 +38,7 @@ EOT;
     {
         $this->persistence->beginTransaction();
         
+        $updateTime = null;
         if ($message->getUpdateTime()) {
             $updateTime = $message->getUpdateTime()->format('Y-m-d H:i:s');
         }
