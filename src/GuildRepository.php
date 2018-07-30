@@ -19,7 +19,7 @@ WHERE id = :id;
 EOT;
 
     const SELECT_GUILD_BY_DOMAIN_NAME = <<<'EOT'
-SELECT id, name, owner_id, domain, members_ids, roles_ids, channels_ids FROM guilds_aggregates
+SELECT id, name, owner_id, joined_date, domain, members_ids, roles_ids, channels_ids FROM guilds_aggregates
 WHERE domain = :domain_name
 EOT;
 
@@ -28,24 +28,11 @@ SELECT *
 FROM guilds_aggregates guilds
 EOT;
 
-    const SELECT_GUILD_MEMBER = <<<'EOT'
-SELECT guilds_users.user_id as id, guilds_users.nickname, guilds_users.joined_date, json_agg(members_roles.role_id) AS roles_ids FROM guilds_users
-JOIN members_roles ON members_roles.user_id = guilds_users.user_id
-where guilds_users.guild_id = :guild_id AND guilds_users.user_id = :member_id
-GROUP BY guilds_users.user_id, guilds_users.nickname, guilds_users.joined_date
+    const INSERT_GUILD = <<<'EOT'
+INSERT INTO guilds VALUES (:id, :name, :owner_id)
+ON CONFLICT (id) DO UPDATE SET name = :name, owner_id = :owner_id
 EOT;
 
-    const INSERT_GUILD = "INSERT INTO guilds VALUES (:id, :name, :owner_id) ON CONFLICT (id) DO UPDATE SET name = :name, owner_id = :owner_id";
-    
-    const INSERT_GUILD_MEMBER = <<<'EOT'
-INSERT INTO guilds_users VALUES (:id, :user_id, :nickname, :joined_at)
-ON CONFLICT (guild_id, user_id) DO UPDATE SET nickname = :nickname
-EOT;
-
-    const INSERT_GUILD_MEMBER_ROLES = <<<'EOT'
-INSERT INTO users_roles VALUES (:user_id, :role_id)
-ON CONFLICT (user_id, role_id) DO NOTHING
-EOT;
 
     /**
      * @var Guild[]

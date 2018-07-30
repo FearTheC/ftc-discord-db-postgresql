@@ -30,6 +30,7 @@ class GuildMapper
             GuildId::create($data['id']),
             GuildName::create($data['name']),
             UserId::create($data['owner_id']),
+            new \DateTime($data['joined_date']),
             new GuildRoleIdCollection(...$rolesIds),
             new GuildMemberIdCollection(...$membersIds),
             new GuildChannelIdCollection(...$channelsIds),
