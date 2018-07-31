@@ -10,12 +10,16 @@ use FTC\Discord\Model\ValueObject\Name\RoleName;
 use FTC\Discord\Model\Collection\GuildRoleCollection;
 use FTC\Discord\Db\Postgresql\Mapper\GuildRoleMapper;
 use FTC\Discord\Model\ValueObject\Permission;
+use FTC\Discord\Model\Collection\GuildRoleIdCollection;
 
 class GuildRoleRepository extends PostgresqlRepository implements RepositoryInterface
 {
     
     const GET_BY_NAME = 'SELECT id, name, guild_id FROM guilds_roles WHERE guilds_roles.guild_id = :guild_id AND guilds_roles.name = :name';
     
+    const DELETE_GUILD_ROLE = <<<'EOT'
+UPDATE guilds_roles SET is_active = false WHERE id = :id
+EOT;
     
     const INSERT_GUILD_ROLE = <<<'EOT'
 INSERT INTO guilds_roles VALUES (:id, :guild_id, :name, :color, :position, :permissions, :mentionable, :hoist)
@@ -58,6 +62,14 @@ EOT;
         $stmt->bindValue('hoist', $role->isHoisted(), \PDO::PARAM_BOOL);
         $stmt->execute();
         
+    }
+    
+    public function delete(RoleId $roleId) : bool
+    {
+        $stmt = $this->persistence->prepare(self::DELETE_GUILD_ROLE);
+        $stmt->bindValue('id', (int) (string) $roleId, \PDO::PARAM_STR);
+        
+        return $stmt->execute();
     }
     
     public function getAll(GuildId $guildId) : GuildRoleCollection

@@ -1,5 +1,5 @@
 {
-	"name" : "qbonaventure/discord-db-postgresql",
+	"name" : "fearthec/ftc-discord-db-postgresql",
 	"type" : "library",
 	"license" : "MIT",
 	"authors" : [{
@@ -8,7 +8,7 @@
 		}
 	],
 	"require" : {
-		"qbonaventure/discord-model" : "dev-master"
+		"fearthec/ftc-discord-model" : "dev-master"
 	},
 	"autoload" : {
 		"psr-4" : {

@@ -9,13 +9,18 @@ use FTC\Discord\Model\ValueObject\Snowflake\GuildId;
 use FTC\Discord\Model\ValueObject\DomainName;
 use FTC\Discord\Db\Postgresql\Mapper\GuildMapper;
 use FTC\Discord\Model\Collection\GuildCollection;
+use Prophecy\Argument\Token\IdenticalValueToken;
 
 class GuildRepository extends PostgresqlRepository implements RepositoryInterface
 {
 
     const SELECT_GUILD = <<<'EOT'
-SELECT * from guilds_aggregates
+SELECT id, name, owner_id, joined_date, domain, members_ids, roles_ids, channels_ids from guilds_aggregates
 WHERE id = :id;
+EOT;
+
+    const DELETE_GUILD = <<<'EOT'
+UPDATE guilds SET is_active = false WHERE id = :id
 EOT;
 
     const SELECT_GUILD_BY_DOMAIN_NAME = <<<'EOT'
@@ -48,6 +53,21 @@ EOT;
         $stmt->execute();
     }
     
+    public function findById(GuildId $id) : ?Guild
+    {
+        $stmt = $this->persistence->prepare(self::SELECT_GUILD);
+        $stmt->bindValue('id', (int) (string) $id, \PDO::PARAM_INT);
+        $stmt->execute();
+        
+        $data =  $stmt->fetch(\PDO::FETCH_ASSOC);
+        
+        if (!$data) {
+            return null;
+        }
+        
+        return GuildMapper::create($data);
+    }
+    
     public function getAll() : GuildCollection
     {
         $stmt = $this->persistence->prepare(self::SELECT_ALL_GUILDS);
@@ -73,10 +93,6 @@ EOT;
         }
         
         return GuildMapper::create($data);
-    }
-    
-    public function findById(GuildId $id) : ?Guild
-    {
     }
 
 

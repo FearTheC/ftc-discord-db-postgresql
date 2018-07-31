@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace FTC\Discord\Db\Postgresql;
@@ -19,6 +20,12 @@ INSERT INTO guilds_users  (guild_id, user_id, nickname, joined_date)
 VALUES (:guild_id, :user_id, :nickname, :joined_date)
 ON CONFLICT (guild_id, user_id) DO UPDATE SET nickname = :nickname
 EOT;
+
+    const DELETE_GUILD_MEMBER = <<<'EOT'
+UPDATE guilds_users
+SET is_active = false
+where guild_id = :guild_id AND user_id = :user_id
+EOT;
     
     const ADD_MEMBER_ROLE = "INSERT INTO members_roles VALUES (:user_id, :role_id) ON CONFLICT DO NOTHING";
     
@@ -27,21 +34,13 @@ SELECT members.id, members.roles, members.joined_date, members.nickname
 FROM view_guilds_members members
 WHERE members.id = :member_id
 EOT;
-    
+
     const SELECT_ALL_GUILD_MEMBER = <<<'EOT'
 SELECT members.id, members.roles, members.joined_date, members.nickname
 FROM view_guilds_members members
 WHERE members.guild_id = :guild_id
 EOT;
     
-//     const SELECT_GUILD_MEMBER = <<<'EOT'
-// SELECT members.id, members.roles, members.joined_date
-// , jsonb_agg(x.roles->>'id') as roles_ids
-// FROM view_guilds_members members, LATERAL (SELECT jsonb_array_elements(members.roles) as roles) x
-// WHERE members.guild_id = :guild_id
-// GROUP BY members.id, members.roles, members.joined_date;
-// EOT;
-
     const SELECT_COUNT_BY_ROLE = <<<'EOT'
 SELECT DISTINCT r.name, count(members.user_id) FROM guilds_users members
 JOIN members_roles roles on roles.user_id = members.user_id
@@ -54,13 +53,6 @@ SELECT  members.roles->'id' FROM view_guilds_members members
 WHERE guild_id = :guild_id
 EOT;
 
-    
-    
-    /**
-     * @var GuildMember[]
-     */
-    private $members;
-
     public function save(GuildMember $member, GuildId $guildId)
     {
         $this->persistence->beginTransaction();
@@ -72,13 +64,29 @@ EOT;
         $stmt->bindValue('joined_date', $member->getJoinDate()->format('Y-m-d H:i'), \PDO::PARAM_STR);
         $stmt->execute();
         
+        $this->clearRoles($member->getId(), $guildId);
+        
         array_map(
             [$this, 'addRole'],
             $member->getRolesIds()->getIterator(),
             array_fill(0, $member->getRolesIds()->count(), $member)
-            );
+        );
         
         $this->persistence->commit();
+    }
+    
+    const CLEAR_ROLES = <<<'EOT'
+DELETE FROM members_roles
+USING guilds_roles
+WHERE members_roles.user_id = :user_id AND guilds_roles.guild_id = :guild_id  
+EOT;
+    
+    private function clearRoles(UserId $memberId, GuildId $guildId) : bool
+    {
+        $stmt = $this->persistence->prepare(self::CLEAR_ROLES);
+        $stmt->bindValue('user_id', $memberId->get(), \PDO::PARAM_INT);
+        $stmt->bindValue('guild_id', $guildId->get(), \PDO::PARAM_INT);
+        return $stmt->execute();
     }
     
     public function addRole(RoleId $roleId, GuildMember $member)
@@ -89,9 +97,12 @@ EOT;
         $stmt->execute();
     }
     
-    public function remove(GuildMember $member)
+    public function delete(GuildMember $member, GuildId $guildId) : bool
     {
-        
+        $stmt = $this->persistence->prepare(self::DELETE_GUILD_MEMBER);
+        $stmt->bindValue('guild_id', $guildId->get(), \PDO::PARAM_INT);
+        $stmt->bindValue('user_id', $member->getId(), \PDO::PARAM_INT);
+        return $stmt->execute();
     }
     
     public function getById(UserId $memberId) : ?GuildMember
@@ -140,7 +151,14 @@ EOT;
     
     public function findById(UserId $id) : GuildMember
     {
+        $stmt = $this->persistence->prepare(self::SELECT_GUILD_MEMBER);
+        $stmt->bindValue('member_id', (string) $memberId, \PDO::PARAM_INT);
+        $stmt->execute();
+        
+        $userArray = $stmt->fetch(\PDO::FETCH_ASSOC);
+        
+        
+        return GuildMemberMapper::create($userArray);
     }
-    
     
 }

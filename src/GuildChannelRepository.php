@@ -8,6 +8,7 @@ use FTC\Discord\Model\ValueObject\Snowflake\ChannelId;
 use FTC\Discord\Model\ValueObject\Snowflake\GuildId;
 use FTC\Discord\Model\Collection\GuildChannelCollection;
 use FTC\Discord\Db\Postgresql\Mapper\GuildChannelMapper;
+use FTC\Discord\Model\Collection\GuildChannelIdCollection;
 
 class GuildChannelRepository extends PostgresqlRepository implements RepositoryInterface
 {
@@ -22,7 +23,19 @@ LEFT JOIN guilds_text_channels text_channels ON type_id = 0 AND text_channels.ch
 LEFT JOIN guilds_voice_channels voice_channels ON type_id = 2 AND voice_channels.channel_id = id
 WHERE guild_id = :guild_id
 EOT;
-    
+
+    const SELECT_IDS = <<<'EOT'
+SELECT id
+FROM guilds_channels
+WHERE guild_id = :guild_id
+EOT;
+
+    const DELETE_CHANNEL = <<<'EOT'
+UPDATE guilds_channels
+SET is_active = false
+WHERE id = :id
+EOT;
+
     const GET_BY_ID = <<<'EOT'
 SELECT * FROM guilds_channel
 WHERE id = :id
@@ -78,6 +91,14 @@ EOT;
         }
         
         $this->persistence->commit();
+    }
+    
+    public function delete(ChannelId $channelId) : bool
+    {
+        $stmt = $this->persistence->prepare(self::DELETE_CHANNEL);
+        $stmt->bindValue('id', $channelId->get(), \PDO::PARAM_STR);
+        
+        return $stmt->execute();
     }
     
     public function findById(ChannelId $id) : ?GuildChannel
