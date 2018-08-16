@@ -97,11 +97,11 @@ EOT;
         $stmt->execute();
     }
     
-    public function delete(GuildMember $member, GuildId $guildId) : bool
+    public function delete(UserId $memberId, GuildId $guildId) : bool
     {
         $stmt = $this->persistence->prepare(self::DELETE_GUILD_MEMBER);
         $stmt->bindValue('guild_id', $guildId->get(), \PDO::PARAM_INT);
-        $stmt->bindValue('user_id', $member->getId(), \PDO::PARAM_INT);
+        $stmt->bindValue('user_id', $memberId->get(), \PDO::PARAM_INT);
         return $stmt->execute();
     }
     
