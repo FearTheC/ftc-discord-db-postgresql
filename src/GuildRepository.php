@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace FTC\Discord\Db\Postgresql;
 
@@ -9,7 +11,6 @@ use FTC\Discord\Model\ValueObject\Snowflake\GuildId;
 use FTC\Discord\Model\ValueObject\DomainName;
 use FTC\Discord\Db\Postgresql\Mapper\GuildMapper;
 use FTC\Discord\Model\Collection\GuildCollection;
-use Prophecy\Argument\Token\IdenticalValueToken;
 
 class GuildRepository extends PostgresqlRepository implements RepositoryInterface
 {
@@ -94,7 +95,5 @@ EOT;
         
         return GuildMapper::create($data);
     }
-
-
 
 }
