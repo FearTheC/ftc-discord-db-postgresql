@@ -51,6 +51,15 @@ EOT;
     const SELECT_ALL = <<<'EOT'
 SELECT  members.roles->'id' FROM view_guilds_members members
 WHERE guild_id = :guild_id
+LIMIT 1
+EOT;
+
+    const SELECT_MEMBER_STATS = <<<'EOT'
+SELECT gm.id, gm.nickname, gm.joined_date, gm.last_message_time, max(vp.start_time) as last_vp_time
+FROM view_guilds_members gm
+JOIN view_guilds_members_vocal_presence vp ON vp.member_id = :member_id
+WHERE gm.guild_id = :guild_id AND gm.id = :member_id
+GROUP BY gm.id, gm.nickname, gm.joined_date, gm.last_message_time
 EOT;
 
     public function save(GuildMember $member, GuildId $guildId)
@@ -139,6 +148,19 @@ EOT;
         $results = $stmt->fetchAll(\PDO::FETCH_NAMED);
         
         return $results;
+    }
+    
+    
+    public function getMemberGuildStats(UserId $memberId, GuildId $guildId)
+    {
+        $stmt = $this->persistence->prepare(self::SELECT_MEMBER_STATS);
+        $stmt->bindValue('member_id', $memberId->get(), \PDO::PARAM_INT);
+        $stmt->bindValue('guild_id', $guildId->get(), \PDO::PARAM_INT);
+        $stmt->execute();
+        
+        $data = $stmt->fetch(\PDO::FETCH_ASSOC);
+        
+        return $data;
     }
     
     private function fromArray($array)
