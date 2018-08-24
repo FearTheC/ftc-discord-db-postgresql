@@ -2,8 +2,8 @@
 
 namespace FTC\Discord\Db\Postgresql;
 
-use FTC\Discord\Model\Aggregate\ErrorMessageRepository as RepositoryInterface;
-use FTC\Discord\Model\Aggregate\ErrorMessage;
+use FTC\Discord\Model\Repository\ErrorMessageRepository as RepositoryInterface;
+use FTC\Discord\Model\ValueObject\ErrorMessage;
 use FTC\Discord\Db\Postgresql\Mapper\ErrorMessageMapper;
 use FTC\Discord\Model\Collection\ErrorMessageCollection;
 
