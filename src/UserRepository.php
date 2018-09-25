@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace FTC\Discord\Db\Postgresql;
 
@@ -14,7 +16,10 @@ class UserRepository extends PostgresqlRepository implements RepositoryInterface
 SELECT * from users
 WHERE id = :id;
 EOT;
-    const INSERT_USER = "INSERT INTO users VALUES (:id, :username, :tag, :email, :is_bot) ON CONFLICT (id) DO UPDATE SET username = :username, email = :email";
+    const INSERT_USER = <<<'EOT'
+INSERT INTO users VALUES (:id, :username, :tag, :email, :is_bot)
+ON CONFLICT (id) DO UPDATE SET username = :username, email = :email;
+EOT;
     
     /**
      * @var User[]
