@@ -4,20 +4,20 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "4e719249f28d9aa79a09593407db0b42",
+    "content-hash": "6a42256672266fd1785c9a25eb4f0a51",
     "packages": [
         {
             "name": "fearthec/ftc-discord-model",
-            "version": "dev-master",
+            "version": "0.1.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/FearTheC/ftc-discord-model.git",
-                "reference": "03f9702582b252e127edd698c6b9d8aad973e839"
+                "reference": "7a8d10fcdfdb0140d057846eae04f2cbeed3a27c"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/FearTheC/ftc-discord-model/zipball/03f9702582b252e127edd698c6b9d8aad973e839",
-                "reference": "03f9702582b252e127edd698c6b9d8aad973e839",
+                "url": "https://api.github.com/repos/FearTheC/ftc-discord-model/zipball/7a8d10fcdfdb0140d057846eae04f2cbeed3a27c",
+                "reference": "7a8d10fcdfdb0140d057846eae04f2cbeed3a27c",
                 "shasum": ""
             },
             "require": {
@@ -25,6 +25,7 @@
                 "psr/container": "^1.0"
             },
             "require-dev": {
+                "infection/infection": "^0.10.0",
                 "league/container": "^2.4",
                 "phpunit/phpunit": "^7.2"
             },
@@ -45,7 +46,7 @@
                     "email": "quentin@bonaventure.xyz"
                 }
             ],
-            "time": "2018-08-02T07:37:19+00:00"
+            "time": "2018-10-04T14:18:59+00:00"
         },
         {
             "name": "guzzlehttp/guzzle",
@@ -331,9 +332,7 @@
     "packages-dev": [],
     "aliases": [],
     "minimum-stability": "stable",
-    "stability-flags": {
-        "fearthec/ftc-discord-model": 20
-    },
+    "stability-flags": [],
     "prefer-stable": false,
     "prefer-lowest": false,
     "platform": [],

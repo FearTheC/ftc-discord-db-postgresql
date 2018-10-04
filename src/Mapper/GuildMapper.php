@@ -25,6 +25,7 @@ class GuildMapper
         if ($domainName = $data['domain']) {
             $domainName = DomainName::create($domainName);
         }
+        $domainIsActive = $data['is_domain_active'] ?? false;
 
         return Guild::create(
             GuildId::create($data['id']),
@@ -34,7 +35,9 @@ class GuildMapper
             new GuildRoleIdCollection(...$rolesIds),
             new GuildMemberIdCollection(...$membersIds),
             new GuildChannelIdCollection(...$channelsIds),
-            $domainName
+            $domainName,
+            $domainIsActive
+            
        );
     }
     

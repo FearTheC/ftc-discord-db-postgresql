@@ -16,7 +16,7 @@ class GuildRepository extends PostgresqlRepository implements RepositoryInterfac
 {
 
     const SELECT_GUILD = <<<'EOT'
-SELECT id, name, owner_id, joined_date, domain, members_ids, roles_ids, channels_ids from guilds_aggregates
+SELECT id, name, owner_id, joined_date, domain, is_domain_active, members_ids, roles_ids, channels_ids from guilds_aggregates
 WHERE id = :id;
 EOT;
 
@@ -25,7 +25,7 @@ UPDATE guilds SET is_active = false WHERE id = :id
 EOT;
 
     const SELECT_GUILD_BY_DOMAIN_NAME = <<<'EOT'
-SELECT id, name, owner_id, joined_date, domain, members_ids, roles_ids, channels_ids FROM guilds_aggregates
+SELECT id, name, owner_id, joined_date, domain, is_domain_active, members_ids, roles_ids, channels_ids FROM guilds_aggregates
 WHERE domain = :domain_name
 EOT;
 
@@ -92,7 +92,7 @@ EOT;
         if (!$data) {
             return null;
         }
-        
+
         return GuildMapper::create($data);
     }
 
