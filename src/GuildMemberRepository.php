@@ -29,6 +29,12 @@ EOT;
     
     const ADD_MEMBER_ROLE = "INSERT INTO members_roles VALUES (:user_id, :role_id) ON CONFLICT DO NOTHING";
     
+    const CLEAR_ROLES = <<<'EOT'
+DELETE FROM members_roles
+USING guilds_roles
+WHERE members_roles.user_id = :user_id AND role_id IN (SELECT id FROM guilds_roles WHERE guild_id = :guild_id)
+EOT;
+    
     const SELECT_GUILD_MEMBER = <<<'EOT'
 SELECT members.id, members.roles, members.joined_date, members.nickname
 FROM view_guilds_members members
@@ -84,14 +90,9 @@ EOT;
         $this->persistence->commit();
     }
     
-    const CLEAR_ROLES = <<<'EOT'
-DELETE FROM members_roles
-USING guilds_roles
-WHERE members_roles.user_id = :user_id AND guilds_roles.guild_id = :guild_id  
-EOT;
-    
     private function clearRoles(UserId $memberId, GuildId $guildId) : bool
     {
+        print($guildId->get());
         $stmt = $this->persistence->prepare(self::CLEAR_ROLES);
         $stmt->bindValue('user_id', $memberId->get(), \PDO::PARAM_INT);
         $stmt->bindValue('guild_id', $guildId->get(), \PDO::PARAM_INT);
